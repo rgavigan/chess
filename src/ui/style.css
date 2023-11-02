@@ -1,0 +1,246 @@
+/* Centered Container for Login / Create Account */
+.centered-container {
+    width: 50%;
+    height: 50%;
+    margin: 0 auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+/* Centered Container for Game */
+.centered-game-container {
+    width: 90%;
+    height: 80%;
+    margin: 0 auto;
+    padding: 0px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+/* Centered Container for Game */
+.centered-board-container {
+    width: 100%;
+    height: 100%;
+}
+
+/* Centered Container for Winner */
+.winner-container {
+    max-width: 400px;
+    max-height: 400px;
+    margin: 0 auto;
+    padding: 0px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+/* Centered Container for Login / Create Account */
+.sidebar-container {
+    width: 25%;
+    height: 50%;
+    margin: 0 auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+/* Centered Container for Statistics */
+.statistics-container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 25px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+/* Centered Container for Statistics */
+.game-statistics-container {
+    width: 100%;
+    padding: 0px;
+    border: 1px solid #ccc;
+}
+
+
+/* White background chess square */
+.white-square {
+    background-image: url('../../resources/images/white-Square.png');
+    border: none; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    width: 85px; 
+    height: 85px;
+}
+
+/* Selected chess square */
+.selected-square {
+    background-color: rgba(0, 0, 0, 0.5);
+    border: none; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    width: 85px; 
+    height: 85px;
+}
+
+/* Checked chess square */
+.checked-square {
+    background-color: rgba(225, 0, 0, 0.5);
+    border: none; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    width: 85px; 
+    height: 85px;
+}
+
+/* Selected chess square */
+.possible-move-square {
+    background-color: rgba(0, 75, 0, 0.5);
+    border: none; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    width: 85px; 
+    height: 85px;
+}
+
+/* Black background chess square */
+.black-square {
+    background-image: url('../../resources/images/black-Square.png');
+    border: none; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    width: 85px; 
+    height: 85px;
+}
+
+.center-text {
+    text-align: center;
+}
+
+.logout-button {
+    background-color: red;
+    color: white;
+    padding: 10px 10px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.login-button {
+    background-color: green;
+    color: white;
+    padding: 10px 10px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.message-text {
+    color: black;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+/* Button Style */
+.button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #000;
+    color: #fff;
+    font-size: 16px;
+    text-align: center;
+    text-decoration: none;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+/* Red Button Style */
+.red-button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: darkred;
+    color: #fff;
+    font-size: 16px;
+    text-align: center;
+    text-decoration: none;
+    border: black;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.button:hover {
+    background-color: #333; /* Hover background color */
+}
+
+/* Style for a button with no border - i.e. create account text */
+.text-button {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: 16px;
+    color: #007bff;
+    cursor: pointer;
+}
+
+/* Style for error text */
+.error-text {
+    font-size: 16px;
+    color: red;
+    text-align: center;
+}
+
+/* Style for Wt::WLineEdit widgets */
+.wt-wlineedit {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+    font-size: 16px;
+}
+
+/* Style for placeholder text inside Wt::WLineEdit widgets */
+.wt-wlineedit::placeholder {
+    color: #999;
+}
+
+/* Style for focused Wt::WLineEdit widgets */
+.wt-wlineedit:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+/* Style for titles */
+.title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+}
+
+.green-button {
+    background-color: green;
+    color: white; /* Set text color to white for better visibility on green background */
+}
+.normalButton {
+    background-color: #f5f5f5;
+    border: 1px solid #ccc;
+}
+
+.highlightedButton {
+    background-color: red; /* This will make the button red when highlighted */
+    
+}

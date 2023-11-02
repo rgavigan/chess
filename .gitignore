@@ -1,0 +1,7 @@
+.vscode/
+**output.txt
+build/
+main_app
+test_main
+**/.DS_Store
+stockfish/*
