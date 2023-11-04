@@ -1,0 +1,13 @@
+[Unit]
+Description=Hosted Chess Application for chess.rileygavigan.com
+After=nginx.service
+Wants=nginx.service
+
+[Service]
+ExecStart=/home/<user>/group2/main_app --docroot . --http-listen 127.0.0.1:8080
+Restart=always
+User=<user>
+WorkingDirectory=/home/<user>/group2
+
+[Install]
+WantedBy=multi-user.target

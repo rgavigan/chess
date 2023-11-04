@@ -83,53 +83,20 @@ TEST_F(GameControllerTests, SaveLoadGame) {
     std::string blackPlayerName = controller->getCurrentPlayer()->getColour() == Colour::BLACK 
                         ? controller->getCurrentPlayer()->getName() : controller->getOpponentPlayer()->getName();
 
-    GameStatus gameStatus = controller->getGameStatus();
+    std::string pgn = generatePGN(controller->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, controller->getGameStatus(), controller->getBoardStatesMetadata().first);
 
-    std::string matchResult;
-    if (gameStatus == GameStatus::CHECKMATE || gameStatus == GameStatus::RESIGN) {
-        matchResult =  controller->getCurrentPlayer()->getColour() == Colour::BLACK ? "1-0" : "0-1";
-    } else if (gameStatus == GameStatus::DRAW || gameStatus == GameStatus::STALEMATE) {
-        matchResult = "1/2-1/2";
-    } else {
-        matchResult = "*";  // Uncertain outcome or game still ongoing
-    }
-
-    std::string eventName = "Local Match: " + whitePlayerName + " vs. " + blackPlayerName;
-    std::string site = "CS 3307";
-    std::string date = "2023.10.27";  // Ensure this method outputs the date in "YYYY.MM.DD" format
-    std::string round = "1";
-
-    std::string pgn = generatePGN(eventName, site, date, round, whitePlayerName, blackPlayerName, matchResult, controller->getBoardStatesMetadata().first);
-    std::cout << "1 \n " << pgn << std::endl;
-
-    controller->updateBoardStatesMetadata(pgn, date);
+    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
 
     controller->setGameStatus(GameStatus::PROMPTDRAW);
 
-    gameStatus = controller->getGameStatus();
-    if (gameStatus == GameStatus::CHECKMATE || gameStatus == GameStatus::RESIGN) {
-        matchResult =  controller->getCurrentPlayer()->getColour() == Colour::BLACK ? "1-0" : "0-1";
-    } else if (gameStatus == GameStatus::DRAW || gameStatus == GameStatus::STALEMATE) {
-        matchResult = "1/2-1/2";
-    } else {
-        matchResult = "*";  // Uncertain outcome or game still ongoing
-    }
-    pgn = generatePGN(eventName, site, date, round, whitePlayerName, blackPlayerName, matchResult, controller->getBoardStatesMetadata().first);
+    pgn = pgn = generatePGN(controller->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, controller->getGameStatus(), controller->getBoardStatesMetadata().first);
 
-    controller->updateBoardStatesMetadata(pgn, date);
+    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
 
     controller->setGameStatus(GameStatus::ONGOING);
 
-    gameStatus = controller->getGameStatus();
-    if (gameStatus == GameStatus::CHECKMATE || gameStatus == GameStatus::RESIGN) {
-        matchResult =  controller->getCurrentPlayer()->getColour() == Colour::BLACK ? "1-0" : "0-1";
-    } else if (gameStatus == GameStatus::DRAW || gameStatus == GameStatus::STALEMATE) {
-        matchResult = "1/2-1/2";
-    } else {
-        matchResult = "*";  // Uncertain outcome or game still ongoing
-    }
-    pgn = generatePGN(eventName, site, date, round, whitePlayerName, blackPlayerName, matchResult, controller->getBoardStatesMetadata().first);
-    controller->updateBoardStatesMetadata(pgn, date);
+    pgn = generatePGN(controller->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, controller->getGameStatus(), controller->getBoardStatesMetadata().first);
+    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
 
     EXPECT_TRUE(controller->saveGame());
 
@@ -361,56 +328,33 @@ TEST_F(GameControllerTests, UpdateGameStatus) {
     std::string blackPlayerName = controller->getCurrentPlayer()->getColour() == Colour::BLACK 
                         ? controller->getCurrentPlayer()->getName() : controller->getOpponentPlayer()->getName();
 
-    GameStatus gameStatus = controller->getGameStatus();
-
-    std::string matchResult;
-    if (gameStatus == GameStatus::CHECKMATE || gameStatus == GameStatus::RESIGN) {
-        matchResult =  controller->getCurrentPlayer()->getColour() == Colour::BLACK ? "1-0" : "0-1";
-    } else if (gameStatus == GameStatus::DRAW || gameStatus == GameStatus::STALEMATE) {
-        matchResult = "1/2-1/2";
-    } else {
-        matchResult = "*";  // Uncertain outcome or game still ongoing
-    }
-
-    std::string eventName = "Local Match: " + whitePlayerName + " vs. " + blackPlayerName;
-    std::string site = "CS 3307";
-    std::string date = "2023.10.27";  // Ensure this method outputs the date in "YYYY.MM.DD" format
-    std::string round = "1";
-
-    std::string pgn = generatePGN(eventName, site, date, round, whitePlayerName, blackPlayerName, matchResult, controller->getBoardStatesMetadata().first);
+    std::string pgn = generatePGN(controller->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, controller->getGameStatus(), controller->getBoardStatesMetadata().first);
     std::cout << "5 \n " << pgn << std::endl;
 
 
 
     // threefold repetition is when the same board state occurs three times in a game 
-    controller->updateBoardStatesMetadata(pgn, date);
-    controller->updateBoardStatesMetadata(pgn, date);
-    controller->updateBoardStatesMetadata(pgn, date);
+    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
+    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
+    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
     controller->updateGameStatus();
     EXPECT_EQ(controller->getGameStatus(), GameStatus::PROMPTDRAW);
 
     // Fivefold repetition scenario 
-    controller->updateBoardStatesMetadata(pgn, date);
-    controller->updateBoardStatesMetadata(pgn, date);
+    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
+    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
     controller->updateGameStatus();
     EXPECT_EQ(controller->getGameStatus(), GameStatus::DRAW); // automatic draw after the same board repeats 5 times 
 
-    gameStatus = controller->getGameStatus();
-    if (gameStatus == GameStatus::CHECKMATE || gameStatus == GameStatus::RESIGN) {
-        matchResult =  controller->getCurrentPlayer()->getColour() == Colour::BLACK ? "1-0" : "0-1";
-    } else if (gameStatus == GameStatus::DRAW || gameStatus == GameStatus::STALEMATE) {
-        matchResult = "1/2-1/2";
-    } else {
-        matchResult = "*";  // Uncertain outcome or game still ongoing
-    }
-
-    pgn = generatePGN(eventName, site, date, round, whitePlayerName, blackPlayerName, matchResult, controller->getBoardStatesMetadata().first);
+    pgn = generatePGN(controller->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, controller->getGameStatus(), controller->getBoardStatesMetadata().first);
 
     std::cout << "6 \n " << pgn << std::endl;
     
     // Fifty-move scenario 
+    controller->getMutableBoard().initializeBoard();
+    controller->makeMove(Position{6, 4}, Position{4, 4}); // White's move e2e4
     controller->setNoCaptureOrPawnMoveCounter(50);
-    controller->setLastMove(Move(Position{7, 1}, Position{5, 0}, PieceType::KNIGHT, Colour::WHITE)); // set last move to randon move that isn't a pawn and wasn't a capture 
+    controller->setLastMove(Move(Position{7, 1}, Position{5, 0}, PieceType::KNIGHT, Colour::WHITE)); // set last move to random move that isn't a pawn and wasn't a capture 
     controller->updateGameStatus();
     EXPECT_EQ(controller->getGameStatus(), GameStatus::PROMPTDRAW); // prompt players to draw after 50 moves of no captures or no pawn movement 
 

@@ -24,6 +24,13 @@
 #include <Wt/WLink.h>
 #include <Wt/WTimer.h>
 #include <Wt/WBreak.h>
+#include <Wt/WPopupWidget.h>
+#include <Wt/WTable.h>
+#include <Wt/WTableRow.h>
+#include <sstream>
+#include <Wt/WDialog.h>
+#include <Wt/WText.h>
+
 
 #include "GameController.h"
 #include "Piece.h"
@@ -58,6 +65,8 @@ private:
   UserStatistics *userOneStatistics_; /** User one statistics instance */
   UserStatistics *userTwoStatistics_; /** User two statistics instance */
   Wt::WContainerWidget *gameInfo_; /** Container for the game info */
+  Wt::WContainerWidget *gameHistory_; /** Container for the game history  */
+  Wt::WTable* gameTable_; /** Table for The game History */
 
   Wt::WContainerWidget *pageContainer_;
   Wt::WGridLayout *pageLayout_;
@@ -65,13 +74,19 @@ private:
 
   Wt::WPushButton *blackResignButton_; /** Button for black player to resign */
   Wt::WPushButton *whiteResignButton_; /** Button for white player to resign */
+  Wt::WPushButton *whiteDrawButton_; /** Button for white to prompt draw */
+  Wt::WPushButton *blackDrawButton_; /* Button for black to prompt draw */
 
+  Wt::WDialog *promptDrawDialog_;  /** dialog for prompt draw */
+  Wt::WDialog *drawDialog_;  /** dialog for the draw */
+  Wt::WDialog *winDialog_;  /** dialog for the win */
   Wt::WPushButton *homepageButton_; /** Button to navigate back to homepage, stopping game */
   Wt::WPushButton *saveGameButton_; /** Button to save the current game */
 
   Wt::WContainerWidget *winnerContainer_; /** Container for the winner */
-  
+
   void initializeBoard(); /** Initialize the chess board */
+
 
   void updateBoard(); /** Update the board with the current board state */
   void makeMove(Wt::WPushButton* selectedPiece, Wt::WPushButton* destination); /** Attempt to make a move on the board */
@@ -79,14 +94,21 @@ private:
   void handleButtonPress(Wt::WPushButton* btn);
   void updateForGameStatus(); /** Updates the UI based on the current game status */
   void decrementCurrentPlayerTime(); /** Decrement current player time by 1 second */
+  void gameHistory(); /** Displays the game History */
+  void updateTable(); /** Updates The Game table History */
 
   void updateButtonStyleClass(Wt::WPushButton* btn, const std::string* styleClas); /** Helper to update button style class */
   void updateStylesForPositions(std::vector<Position>& positions, const std::string* styleClass); /** Helper to update the style of a position vector to styleClass */
   void updateGameInfoPanel(std::string* currentColour, std::string* gameStatusString); /** Helper to update the game info panel for a changed game status */
 
+  void handlePromptDrawDialog(); /** Handles prompt draw dialog */
+  void handleDrawDialog(); /** Handles draw dialog */
+  void handleWinDialog(); /** Handles win dialog */
+
   void handleBlackPlayerResignation(); /** Handle black player resignation */
   void handleWhitePlayerResignation(); /** Handle white player resignation */
   void backToHomepage(); /** Handle navigation back to homepage */
+
 };
 
 #endif // CHESS_BOARD_UI_H

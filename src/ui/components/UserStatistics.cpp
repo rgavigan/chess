@@ -11,14 +11,14 @@
  * @param user object to retrieve statistics from
  */
 UserStatistics::UserStatistics(User* user) {
-    user_ = user; // Copy user reference 
+    user_ = user; // Copy user reference
 
-    // Create the container and layout for the statistics 
+    // Create the container and layout for the statistics
     statisticsContainer_ = std::make_unique<Wt::WContainerWidget>();
     statisticsContainer_->setStyleClass("statistics-container");
     statisticsLayout_ = statisticsContainer_->setLayout(std::make_unique<Wt::WGridLayout>());
 
-    // User's statistics 
+    // User's statistics
     if (user_->getUsername() == "") {
         userInfo_ = statisticsLayout_->addWidget(std::make_unique<Wt::WText>("Guest Player"), 0, 0, 1, 2);
     }
@@ -27,9 +27,10 @@ UserStatistics::UserStatistics(User* user) {
     }
     userInfo_->setStyleClass("center-text");
 
-    // Timer combo box for user to select game timer 
+    // Timer combo box for user to select game timer
     statisticsLayout_->addWidget(std::make_unique<Wt::WText>("Match Timer Minutes: "), 1, 0);
     timerComboBox_ = statisticsLayout_->addWidget(std::make_unique<Wt::WComboBox>(), 1, 1);
+    timerComboBox_->addItem("2");
     timerComboBox_->addItem("10");
     timerComboBox_->addItem("20");
     timerComboBox_->addItem("30");
@@ -38,12 +39,12 @@ UserStatistics::UserStatistics(User* user) {
     timerComboBox_->activated().connect(this, &UserStatistics::updateTimer);
     statisticsLayout_->setColumnStretch(1, 1);
 
-    // Game Statistics 
+    // Game Statistics
     gameStatisticsContainer_ = std::make_unique<Wt::WContainerWidget>();
     gameStatisticsContainer_->setStyleClass("game-statistics-container");
     gameStatisticsLayout_ = gameStatisticsContainer_->setLayout(std::make_unique<Wt::WGridLayout>());
 
-    // User's game statistics 
+    // User's game statistics
     if (user_->getUsername() == "") {
         gameUserInfo_ = gameStatisticsLayout_->addWidget(std::make_unique<Wt::WText>("Guest Player"), 0, 0);
     }
@@ -54,8 +55,8 @@ UserStatistics::UserStatistics(User* user) {
 
     std::string minutes = std::to_string(std::chrono::duration_cast<std::chrono::minutes>(user_->getTimer()).count()); // Extract minutes
     std::string seconds = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(user_->getTimer()).count() % 60); // Extract seconds (using modulo to get seconds within the minute)
-    
-    // Pad seconds to make sure it is 2 digits long, add 0 if necessary 
+
+    // Pad seconds to make sure it is 2 digits long, add 0 if necessary
     if (seconds.length() == 1) {
         seconds = "0" + seconds;
     }
@@ -104,7 +105,7 @@ void UserStatistics::updateStatistics(Player *player) {
     std::string minutes = std::to_string(std::chrono::duration_cast<std::chrono::minutes>(player->getTimeLeft()).count()); // Extract minutes
     std::string seconds = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(player->getTimeLeft()).count() % 60); // Extract seconds (using modulo to get seconds within the minute)
 
-    // Pad seconds to make sure it is 2 digits long, add 0 if necessary 
+    // Pad seconds to make sure it is 2 digits long, add 0 if necessary
     if (seconds.length() == 1) {
         seconds = "0" + seconds;
     }

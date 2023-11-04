@@ -3,12 +3,12 @@
 
 /**
  * Author: Bradley McGlynn
- * Description: Declaration of the GameController class. 
- * This class acts as a mediator between the game's logic and the game's state, 
- * managed by the GameState class, providing a unified 
- * interface for the UI to interact with. 
- * It is responsible for controlling the flow of the game, 
- * managing turns, and handling user interactions such 
+ * Description: Declaration of the GameController class.
+ * This class acts as a mediator between the game's logic and the game's state,
+ * managed by the GameState class, providing a unified
+ * interface for the UI to interact with.
+ * It is responsible for controlling the flow of the game,
+ * managing turns, and handling user interactions such
  * as moves, undos, redos, saves, loads, and resignations.
  * Date: September 28th, 2023
  */
@@ -41,7 +41,7 @@ public:
 
     /** Attempts to make a move between two positions and updates the game state. */
     bool makeMove(const Position& start, const Position& end);
-    
+
     /** Retrieves all possible moves for a piece at a given position. */
     std::vector<Position> getPossibleMoves(const Position& position) const;
 
@@ -150,6 +150,15 @@ public:
     /** Generates possible moves using the Stockfish chess engine based on the player's last move. */
     std::vector<Move> generateStockfishMoves();
 
+    /** Retrieves the current turn number. */
+    int getTurnNumber() const;
+
+    /** Retrieves the last move made in the game. */
+    const Move& getLastMove() const;
+
+    /* Retrieves the game's move history as a string. */
+    std::string getGameHistoryString() const;
+
 private:
     std::unique_ptr<GameState> gameState;          /** Holds the current state of the chess game including board, pieces, moves, etc. */
     int gameID;                                     /** A unique identifier for this game instance. Useful for databases, logging, or multi-game management. */
@@ -161,9 +170,6 @@ private:
 
     /** Checks if the time limit for the current turn/player is exceeded. */
     bool isTimeOut() const;
-
-    /** Retrieves the current turn number. */
-    int getTurnNumber() const;
 
     /** Increments the turn number by one. */
     void incrementTurnNumber();
@@ -195,17 +201,12 @@ private:
     /** Sets the start time for the current turn. */
     void setTurnStartTime(std::chrono::steady_clock::time_point timePoint);
 
-    /** Retrieves the last move made in the game. */
-    const Move& getLastMove() const;
 
     /** Parses a move in string format and returns a Move object. */
     Move parseMoveString(const std::string& moveString) const;
 
     /** Sets the game's move history using a string. */
     void setGameHistoryString(const std::string& history);
-
-    /* Retrieves the game's move history as a string. */
-    std::string getGameHistoryString() const;
 };
 
 #endif // GAME_CONTROLLER_H

@@ -58,7 +58,8 @@ enum class GameStatus {
     STALEMATE,
     PROMPTDRAW,
     DRAW,
-    RESIGN
+    RESIGN,
+    TIMEOUT
 };
 
 /**
@@ -294,16 +295,27 @@ inline std::string gameStatusToString(GameStatus status) {
 }
 
 inline std::string generatePGN(
-    const std::string& eventName,
-    const std::string& site,
-    const std::string& date,
-    const std::string& round,
+    const std::string& username1,
     const std::string& whitePlayer,
     const std::string& blackPlayer,
-    const std::string& result,
+    const GameStatus gameStatus,
     const std::vector<BoardMetadata>& chronologicalData
 ) {
     std::stringstream pgn;
+
+    std::string eventName = "Local Match: " + whitePlayer + " " + blackPlayer;
+    std::string site = "CS 3307";
+    std::string date = getCurrentDate(); 
+    std::string round = "1";
+
+    std::string matchResult;
+        if (gameStatus == GameStatus::CHECKMATE || gameStatus == GameStatus::RESIGN || gameStatus == GameStatus::TIMEOUT) {
+            matchResult = username1 == blackPlayer ? "1-0" : "0-1";
+        } else if (gameStatus == GameStatus::DRAW || gameStatus == GameStatus::STALEMATE) {
+            matchResult = "1/2-1/2";
+        } else {
+            matchResult = "*";  // Uncertain outcome or game still ongoing
+        }
 
     // Add meta information
     pgn << "[Event \"" << eventName << "\"]\n"
@@ -312,11 +324,10 @@ inline std::string generatePGN(
         << "[Round \"" << round << "\"]\n"
         << "[White \"" << whitePlayer << "\"]\n"
         << "[Black \"" << blackPlayer << "\"]\n"
-        << "[Result \"" << result << "\"]\n\n";
+        << "[Result \"" << matchResult << "\"]\n\n";
 
     for (const auto& metadata : chronologicalData) {
         const Move& move = metadata.moveMade;
-        std::cout << move.start.col << "," << move.start.row << " " << move.end.col << "," << move.end.row << std::endl;
         if (move.start == Position{0,0} && move.end == Position{0,0}) {
             continue;
         }
@@ -362,7 +373,7 @@ inline std::string generatePGN(
     }
 
     // Add the result at the end
-    pgn << result;
+    pgn << matchResult;
 
     return pgn.str();
 }

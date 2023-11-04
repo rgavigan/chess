@@ -64,55 +64,55 @@
 /* White background chess square */
 .white-square {
     background-image: url('../../resources/images/white-Square.png');
-    border: none; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    width: 85px; 
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 85px;
     height: 85px;
 }
 
 /* Selected chess square */
 .selected-square {
     background-color: rgba(0, 0, 0, 0.5);
-    border: none; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    width: 85px; 
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 85px;
     height: 85px;
 }
 
 /* Checked chess square */
 .checked-square {
     background-color: rgba(225, 0, 0, 0.5);
-    border: none; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    width: 85px; 
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 85px;
     height: 85px;
 }
 
 /* Selected chess square */
 .possible-move-square {
     background-color: rgba(0, 75, 0, 0.5);
-    border: none; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    width: 85px; 
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 85px;
     height: 85px;
 }
 
 /* Black background chess square */
 .black-square {
     background-image: url('../../resources/images/black-Square.png');
-    border: none; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    width: 85px; 
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 85px;
     height: 85px;
 }
 
@@ -165,6 +165,47 @@
     transition: background-color 0.3s;
 }
 
+/* Resign Button Style */
+.resign-Button {
+
+    padding: 10px 20px;
+    background-color: #000;
+    color: #fff;
+    font-size: 16px;
+    text-align: center;
+    text-decoration: none;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    width: 50px; /* Set the width to a specific value which is half of the original */
+}
+/* CSS for the Draw button */
+.draw-Button {
+    display: inline-block;
+    padding: 10px 20px;      /* Add padding inside the button */
+    background-color: #4CAF50; /* A green background for the draw button */
+    color: white;             /* White text color */
+    font-size: 16px;          /* Font size for the text */
+    text-align: center;       /* Center the text inside the button */
+    text-decoration: none;    /* Remove any underline from text */
+    border: none;             /* No border */
+    border-radius: 4px;       /* Rounded corners */
+    cursor: pointer;          /* Pointer cursor on hover */
+    transition: background-color 0.3s; /* Smooth transition for background color */
+    box-sizing: border-box;   /* Include padding and border in the button's total width and height */
+    width: 100%;              /* Make the button fill its container */
+}
+
+.centered-dialog {
+  /* Centering with flexbox */
+  position: fixed; /* or absolute */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  /* Ensure it's on top of other content */
+  z-index: 1000;
+}
 /* Red Button Style */
 .red-button {
     display: inline-block;
@@ -242,5 +283,63 @@
 
 .highlightedButton {
     background-color: red; /* This will make the button red when highlighted */
-    
+
+}
+.inner-container {
+    /* Styles specific to innerContainer.
+       For example, you can set a fixed width and height, background-color, etc. */
+    margin-top: 60px;
+    width: 85%;   /* Example width, adjust as needed */
+    height: 85%;  /* Example height, adjust as needed */
+    background-color: #f5f5f5; /* Example background color, adjust as needed */
+    border: 1px solid #ccc; /* Example border, adjust as needed */
+    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1); /* Optional shadow for a bit of depth */
+
+}
+.inner-container table {
+    width: 100%;  /* Make the table span the entire width of the container */
+    border-collapse: collapse; /* Remove spaces between table cells */
+}
+
+.inner-container table tr:nth-child(odd) {
+    background-color: #f2f2f2;  /* Alternate color for odd rows */
+}
+
+.inner-container table tr:nth-child(even) {
+    background-color: #ffffff;  /* Alternate color for even rows */
+}
+
+.inner-container table td {
+    border: 1px solid #ddd;  /* Grid line */
+    padding: 2px;  /* Some padding for cell data */
+}
+
+.inner-container table tr:hover {
+    background-color: #ddd;  /* Hover effect */
+}
+
+.black-row {
+    background-color: black; /* Set the background color to black */
+    color: white; /* Set the text color to white */
+    font-size: 16px; /* Adjust the text size as desired */
+    font-weight: bold; /* Make the text bold */
+    font-family: 'Arial', sans-serif; /* Specify a nice font-family */
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+  
+.white-row {
+    background-color: white; /* Set the background color to white */
+    color: black; /* Set the text color to black */
+    font-size: 16px; /* Adjust the text size as desired */
+    font-weight: bold; /* Make the text bold */
+    font-family: 'Arial', sans-serif; /* Specify a nice font-family */
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
 }

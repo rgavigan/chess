@@ -161,26 +161,11 @@ TEST_F(GameStateTests, TestBoardStatesMetadata) {
     std::string blackPlayerName = gs->getCurrentPlayer()->getColour() == Colour::BLACK 
                         ? gs->getCurrentPlayer()->getName() : gs->getOpponentPlayer()->getName();
 
-    GameStatus gameStatus = gs->getGameStatus();
 
-    std::string matchResult;
-    if (gameStatus == GameStatus::CHECKMATE || gameStatus == GameStatus::RESIGN) {
-        matchResult =  gs->getCurrentPlayer()->getColour() == Colour::BLACK ? "1-0" : "0-1";
-    } else if (gameStatus == GameStatus::DRAW || gameStatus == GameStatus::STALEMATE) {
-        matchResult = "1/2-1/2";
-    } else {
-        matchResult = "*";  // Uncertain outcome or game still ongoing
-    }
-
-    std::string eventName = "Local Match: " + whitePlayerName + " vs. " + blackPlayerName;
-    std::string site = "CS 3307";
-    std::string date = "2023.10.27";  // Ensure this method outputs the date in "YYYY.MM.DD" format
-    std::string round = "1";
-
-    std::string pgn = generatePGN(eventName, site, date, round, whitePlayerName, blackPlayerName, matchResult, gs->getBoardStatesMetadata().first);
+    std::string pgn = generatePGN(gs->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, gs->getGameStatus(), gs->getBoardStatesMetadata().first);
     std::cout << "1 \n " << pgn << std::endl;
 
-    gs->updateBoardStatesMetadata(pgn, date);
+    gs->updateBoardStatesMetadata(pgn, getCurrentDate());
     BoardMetadata initialMetadata = gs->getBoardStatesMetadata().first[0];
     
     EXPECT_EQ(gs->getBoardStatesMetadata().first.size(), 1);
@@ -203,19 +188,10 @@ TEST_F(GameStateTests, TestBoardStatesMetadata) {
     gs->switchTurns();
     gs->setLastMove(Move(Position{6, 0}, Position{4, 0}, PieceType::PAWN, Colour::WHITE));
 
-    gameStatus = gs->getGameStatus();
-    if (gameStatus == GameStatus::CHECKMATE || gameStatus == GameStatus::RESIGN) {
-        matchResult =  gs->getCurrentPlayer()->getColour() == Colour::BLACK ? "1-0" : "0-1";
-    } else if (gameStatus == GameStatus::DRAW || gameStatus == GameStatus::STALEMATE) {
-        matchResult = "1/2-1/2";
-    } else {
-        matchResult = "*";  // Uncertain outcome or game still ongoing
-    }
-
-    pgn = generatePGN(eventName, site, date, round, whitePlayerName, blackPlayerName, matchResult, gs->getBoardStatesMetadata().first);
+    pgn = generatePGN(gs->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, gs->getGameStatus(), gs->getBoardStatesMetadata().first);
     std::cout << "2 \n " << pgn << std::endl;
 
-    gs->updateBoardStatesMetadata(pgn, date);
+    gs->updateBoardStatesMetadata(pgn, getCurrentDate());
     BoardMetadata updatedMetadata = gs->getBoardStatesMetadata().first[1];
 
     EXPECT_EQ(gs->getBoardStatesMetadata().first.size(), 2);
@@ -236,23 +212,14 @@ TEST_F(GameStateTests, TestBoardStatesMetadata) {
 
     gs->getMutableBoard().initializeBoard(); // reset board to see a copy in the metadata (i.e see a repeated board state)
 
-    gameStatus = gs->getGameStatus();
-    if (gameStatus == GameStatus::CHECKMATE || gameStatus == GameStatus::RESIGN) {
-        matchResult =  gs->getCurrentPlayer()->getColour() == Colour::BLACK ? "1-0" : "0-1";
-    } else if (gameStatus == GameStatus::DRAW || gameStatus == GameStatus::STALEMATE) {
-        matchResult = "1/2-1/2";
-    } else {
-        matchResult = "*";  // Uncertain outcome or game still ongoing
-    }
-
-    pgn = generatePGN(eventName, site, date, round, whitePlayerName, blackPlayerName, matchResult, gs->getBoardStatesMetadata().first);
+    pgn = generatePGN(gs->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, gs->getGameStatus(), gs->getBoardStatesMetadata().first);
 
     std::cout << "3 \n " << pgn << std::endl;
 
-    gs->updateBoardStatesMetadata(pgn, date);
-    gs->updateBoardStatesMetadata(pgn, date);
-    gs->updateBoardStatesMetadata(pgn, date);
-    gs->updateBoardStatesMetadata(pgn, date);
+    gs->updateBoardStatesMetadata(pgn, getCurrentDate());
+    gs->updateBoardStatesMetadata(pgn, getCurrentDate());
+    gs->updateBoardStatesMetadata(pgn, getCurrentDate());
+    gs->updateBoardStatesMetadata(pgn, getCurrentDate());
 
     EXPECT_EQ(gs->getBoardStatesMetadata().second[gs->getMutableBoard().getBoardStateAsString()].size(), 5);
 }

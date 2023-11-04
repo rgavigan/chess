@@ -143,23 +143,7 @@ bool GameController::saveGame() {
         std::string blackPlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
                             ? username2 : username1;
 
-        GameStatus finalStatus = getGameStatus();
-
-        std::string matchResult;
-        if (finalStatus == GameStatus::CHECKMATE || finalStatus == GameStatus::RESIGN) {
-            matchResult =  username1 == blackPlayerName ? "1-0" : "0-1";
-        } else if (finalStatus == GameStatus::DRAW || finalStatus == GameStatus::STALEMATE) {
-            matchResult = "1/2-1/2";
-        } else {
-            matchResult = "*";  // Uncertain outcome or game still ongoing
-        }
-
-        std::string eventName = "Local Match: " + whitePlayerName + " " + blackPlayerName;
-        std::string site = "CS 3307";
-        std::string date = getCurrentDate();  // Ensure this method outputs the date in "YYYY.MM.DD" format
-        std::string round = "1";
-
-        std::string pgn = generatePGN(eventName, site, date, round, whitePlayerName, blackPlayerName, matchResult, getBoardStatesMetadata().first);
+        std::string pgn = generatePGN(getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, getGameStatus(), getBoardStatesMetadata().first);
 
         std::string dataq = "INSERT INTO GAMEDATA(GAMEID, USERNAME1, USERNAME2, COLOUR1, COLOUR2, PGN, TIMESTAMP) "
                         "VALUES (?, ?, ?, ?, ?, ?, ?);";
@@ -291,27 +275,12 @@ bool GameController::loadGame(int gameID) {
         std::string whitePlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
                             ? getCurrentPlayer()->getName() : getOpponentPlayer()->getName();
 
-        std::string blackPlayerName = getCurrentPlayer()->getColour() == Colour::BLACK 
-                            ? getCurrentPlayer()->getName() : getOpponentPlayer()->getName();
+        std::string blackPlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
+                            ? getOpponentPlayer()->getName() : getCurrentPlayer()->getName();
 
+        std::string pgn = generatePGN(getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, getGameStatus(), getBoardStatesMetadata().first);
 
-        std::string matchResult;
-        if (gameStatus == GameStatus::CHECKMATE || gameStatus == GameStatus::RESIGN) {
-            matchResult =  getCurrentPlayer()->getColour() == Colour::BLACK ? "1-0" : "0-1";
-        } else if (gameStatus == GameStatus::DRAW || gameStatus == GameStatus::STALEMATE) {
-            matchResult = "1/2-1/2";
-        } else {
-            matchResult = "*";  // Uncertain outcome or game still ongoing
-        }
-
-        std::string eventName = "Local Match: " + whitePlayerName + " vs. " + blackPlayerName;
-        std::string site = "CS 3307";
-        std::string date = getCurrentDate();  // Ensure this method outputs the date in "YYYY.MM.DD" format
-        std::string round = "1";
-
-        std::string pgn = generatePGN(eventName, site, date, round, whitePlayerName, blackPlayerName, matchResult, getBoardStatesMetadata().first);
-
-        updateBoardStatesMetadata(pgn, date);
+        updateBoardStatesMetadata(pgn, getCurrentDate());
     }
     sqlite3_finalize(game_stmt);
 
@@ -653,6 +622,15 @@ bool GameController::makeMove(const Position& start, const Position& end) {
                 return true;
             }
     
+         std::string whitePlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
+                            ? getCurrentPlayer()->getName() : getOpponentPlayer()->getName();
+
+        std::string blackPlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
+                            ? getOpponentPlayer()->getName() : getCurrentPlayer()->getName();
+
+        std::string pgn = generatePGN(getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, getGameStatus(), getBoardStatesMetadata().first);
+
+        updateBoardStatesMetadata(pgn, getCurrentDate());
         switchTurns();
         // update valid moves for all other pieces based on the new board state 
         ChessBoard& boardMatrix = gameState->getMutableBoard();
@@ -851,15 +829,16 @@ bool GameController::isKingInCheckmate() const {
 void GameController::updateGameStatus() {
     if (isKingInCheckmate()) {
         gameState->setGameStatus(GameStatus::CHECKMATE);
-        // Possibly end the game and declare the winner 
+        return; 
     } else if (isStalemate()) {
         gameState->setGameStatus(GameStatus::STALEMATE);
-        // Possibly end the game as a draw 
+        return;
     } else if (isKingInCheck()) {
         gameState->setGameStatus(GameStatus::CHECK);
         // Notify the player that they are in check 
     } else if (isPlayerResigning()) {
         gameState->setGameStatus(GameStatus::RESIGN);
+        return;
         // Possibly end the game and declare the winner 
     } else {
         gameState->setGameStatus(GameStatus::ONGOING);
@@ -872,6 +851,7 @@ void GameController::updateGameStatus() {
     if (gameState->getBoardStatesMetadata().second[currentState].size() >= 5) {
         // Fivefold repetition occurred, force a draw 
         gameState->setGameStatus(GameStatus::DRAW);
+        return;
     } else if (gameState->getBoardStatesMetadata().second[currentState].size() >= 3) {
         // threefold repetition, prompt ui to ask players if they would like to end as a draw 
         gameState->setGameStatus(GameStatus::PROMPTDRAW);
@@ -884,6 +864,7 @@ void GameController::updateGameStatus() {
         if (counter >= 75) {
             // Seventy-five move rule occurred, automatically call game a draw 
             gameState->setGameStatus(GameStatus::DRAW);
+            return;
         }
         else if (counter >= 50) {
             // Fifty-move rule occurred, prompt ui to ask players if they would like to end as a draw 
@@ -897,6 +878,7 @@ void GameController::updateGameStatus() {
     // checks to see if the board is in a dead position, if so, end the game as a draw 
     if (gameState->getMutableBoard().isDeadPosition()) {
         gameState->setGameStatus(GameStatus::DRAW);
+        return;
     }
 }
 

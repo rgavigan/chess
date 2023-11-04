@@ -28,16 +28,19 @@ CreateAccount::CreateAccount(Wt::WStackedWidget* container) {
     usernameInput_ = createAccountLayout_->addWidget(std::make_unique<Wt::WLineEdit>(), 1, 0);
     usernameInput_->setPlaceholderText("Username");
     usernameInput_->setStyleClass("wt-wlineedit");
+    usernameInput_->enterPressed().connect(this, &CreateAccount::createAccount);
 
     // Password input field 
     passwordInput_ = createAccountLayout_->addWidget(std::make_unique<Wt::WLineEdit>(), 2, 0);
     passwordInput_->setPlaceholderText("Password");
     passwordInput_->setStyleClass("wt-wlineedit");
+    passwordInput_->enterPressed().connect(this, &CreateAccount::createAccount);
 
     // Confirm password input field 
     confirmPasswordInput_ = createAccountLayout_->addWidget(std::make_unique<Wt::WLineEdit>(), 3, 0);
     confirmPasswordInput_->setPlaceholderText("Confirm Password");
     confirmPasswordInput_->setStyleClass("wt-wlineedit");
+    confirmPasswordInput_->enterPressed().connect(this, &CreateAccount::createAccount);
 
     // Button to submit create account request 
     createAccountButton_ = createAccountLayout_->addWidget(std::make_unique<Wt::WPushButton>(), 4, 0);

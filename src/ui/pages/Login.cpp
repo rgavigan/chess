@@ -33,11 +33,13 @@ Login::Login(Wt::WStackedWidget* container, User* user, UserStatistics* userStat
     usernameInput_ = loginLayout_->addWidget(std::make_unique<Wt::WLineEdit>(), 1, 0);
     usernameInput_->setPlaceholderText("Username");
     usernameInput_->setStyleClass("wt-wlineedit");
+    usernameInput_->enterPressed().connect(this, &Login::login);
 
     // Password input field for logging in 
     passwordInput_ = loginLayout_->addWidget(std::make_unique<Wt::WLineEdit>(), 2, 0);
     passwordInput_->setPlaceholderText("Password");
     passwordInput_->setStyleClass("wt-wlineedit");
+    passwordInput_->enterPressed().connect(this, &Login::login);
 
     // Button to submit login request to the back-end 
     loginButton_ = loginLayout_->addWidget(std::make_unique<Wt::WPushButton>(), 3, 0);

@@ -14,6 +14,9 @@ make clean && make
 ```
 Use any web browser to connect to http://127.0.0.1:port-number to play the Wordle application.
 
+## Playing the Application Online
+Navigate to [chess.rileygavigan.com](https://chess.rileygavigan.com)
+
 ## Gaul Connection Instructions
 ```sh
 # In a terminal window on your local computer - establish the tunnel
