@@ -63,10 +63,14 @@ void Application::initializeComponents() {
  * @date 2023-10-15
  */
 void Application::initializeSubpages() {
-    userOneLogin_ = new Login(container_, user1_, userOneStatistics_, user2_); // Index 0 
+    userOneLogin_ = new Login(container_, user1_, userOneStatistics_, user2_, 1); // Index 0 
     createAccount_ = new CreateAccount(container_); // Index 1 
     chessBoardUI_ = new ChessBoardUI(container_, gameController_, user1_, user2_, userOneStatistics_, userTwoStatistics_); // Index 2
-    userTwoLogin_ = new Login(container_, user2_, userTwoStatistics_, user1_); // Index 3 
+    userTwoLogin_ = new Login(container_, user2_, userTwoStatistics_, user1_, 2); // Index 3 
     createAccount_ = new CreateAccount(container_); // Index 4 
     homepage_ = new Homepage(container_, userOneStatistics_, userTwoStatistics_, user1_, user2_, gameController_, chessBoardUI_); // Index 5
+
+    // Setup page references
+    userOneLogin_->setHomepage(homepage_);
+    userTwoLogin_->setHomepage(homepage_);
 }

@@ -615,14 +615,14 @@ bool GameController::makeMove(const Position& start, const Position& end) {
             gameState->getMutableBoard().getPieceAtPosition(rookEndPos)->updateValidMoves(gameState->getMutableBoard());
         }
 
-        if(((movingPieceColour == Colour::WHITE && end.row == 0) 
-            || (movingPieceColour == Colour::BLACK && end.row == 7))) {
+        if(movingPieceType == PieceType::PAWN && (movingPieceColour == Colour::WHITE && end.row == 0) 
+            || (movingPieceColour == Colour::BLACK && end.row == 7)) {
                 // allow pawn to be promoted first before switching turns 
                 updateGameStatus();
                 return true;
             }
     
-         std::string whitePlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
+        std::string whitePlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
                             ? getCurrentPlayer()->getName() : getOpponentPlayer()->getName();
 
         std::string blackPlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
@@ -668,23 +668,18 @@ std::vector<Position> GameController::getPossibleMoves(const Position& position)
             }
             return possibleMoves;
         }
-        /** If the piece is a King, check if a move will place it into check (i.e. an illegal move)
-         * This check mainly pertains to when the posibility of the king capturing a piece will leave
-         * it in check afterwards
-        */
-        else if (piece->getPieceType() == PieceType::KING) {
+        // Check if a move will place the king into check (i.e. an illegal move)
+        else if (!isKingInCheck()) {
             std::vector<Position> possibleMoves;
             for (const auto& move : piece->getValidMoves()) {
-                if (tryMove(position, move)) { /** If the king isn't in check after the move, 
-                                                    then it is a valid move */
+                if (tryMove(position, move)) { // If the king isn't in check after the move, 
+                                                    //then it is a valid move 
                     possibleMoves.push_back(move);
                 }
             }
             return possibleMoves;
         }
 
-
-        return piece->getValidMoves(); // Return all valid moves for the piece 
     }
     return {}; // Return an empty vector if there's no piece at the given position. 
 }
@@ -732,9 +727,30 @@ bool GameController::promotePawn(const Position& position, PieceType type) {
     // Create New Piece and replace current piece with it 
     gameState->getMutableBoard()[position.row][position.col] = PieceFactory::createPiece(piece->getColour(), position, type);
     
-    // Update Game Status 
-    updateGameStatus();
+    std::string whitePlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
+                            ? getCurrentPlayer()->getName() : getOpponentPlayer()->getName();
+
+    std::string blackPlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
+                        ? getOpponentPlayer()->getName() : getCurrentPlayer()->getName();
+
+    std::string pgn = generatePGN(getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, getGameStatus(), getBoardStatesMetadata().first);
+
+    updateBoardStatesMetadata(pgn, getCurrentDate());
+
+    // Update valid moves and board status
     switchTurns();
+
+    ChessBoard& boardMatrix = gameState->getMutableBoard();
+        for(int row = 0; row < 8; ++row) {
+            auto& inner = boardMatrix[row];
+            for(auto& piece : inner) {
+                if (piece != nullptr) {
+                    piece->updateValidMoves(gameState->getMutableBoard());
+                }
+            }
+        }
+
+    updateGameStatus();
 
     return true;
 }
@@ -788,9 +804,13 @@ bool GameController::tryMove(const Position& start, const Position& end) const {
     auto boardCopy = std::make_unique<ChessBoard>();
     boardCopy->initializeBoardFromString(gameState->getMutableBoard().getBoardStateAsString());
 
+    // King cannot castle out of check, ensure that the king is not castling
+    if (isKingInCheck() && boardCopy->getPieceAtPosition(start)->getPieceType() == PieceType::KING && abs(start.col - end.col) == 2) {
+        return false;
+    }
+
     // Try to make the move on the copy of the board 
     if (!boardCopy->movePiece(start, end)) return false; // If the move is not valid, return false 
-
     // Check if the king is still in check after the move 
     Colour currentPlayerColour = gameState->getCurrentPlayer()->getColour();
     Position kingPosition = boardCopy->getKingPosition(currentPlayerColour);
@@ -1001,3 +1021,4 @@ Difficulty GameController::getStockfishDifficulty() const {
 void GameController::setStockfishDifficulty(Difficulty difficulty) {
     stockfishDifficulty = difficulty;
 }
+                                             

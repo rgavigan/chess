@@ -12,13 +12,15 @@
  * @param user user
  * @param userStatistics user statistics component
  * @param otherUser other user
+ * @param player player 1 or 2
  */
-Login::Login(Wt::WStackedWidget* container, User* user, UserStatistics* userStatistics, User* otherUser) {
+Login::Login(Wt::WStackedWidget* container, User* user, UserStatistics* userStatistics, User* otherUser, int player) {
     parentContainer_ = container; // Copy parent container reference 
 
     user_ = user;
     otherUser_ = otherUser;
     userStatistics_ = userStatistics;
+    player_ = player;
 
     // Create the container and layout for the login form 
     loginContainer_ = container->addWidget(std::make_unique<Wt::WContainerWidget>());
@@ -53,9 +55,26 @@ Login::Login(Wt::WStackedWidget* container, User* user, UserStatistics* userStat
     createAccountButton_->setStyleClass("text-button");
     createAccountButton_->clicked().connect(this, &Login::navigateToCreateAccount);
 
+    // Button to navigate back to the homepage
+    backButton_ = loginLayout_->addWidget(std::make_unique<Wt::WPushButton>(), 5, 0);
+    backButton_->setText("Continue as Guest");
+    backButton_->setStyleClass("text-button");
+    backButton_->clicked().connect([=] {
+        parentContainer_->setCurrentIndex(5);
+        homepage_->manageLoginButtons(player_, false);
+    });
+
     // Error text 
-    errorText_ = loginLayout_->addWidget(std::make_unique<Wt::WText>(""), 5, 0);
+    errorText_ = loginLayout_->addWidget(std::make_unique<Wt::WText>(""), 6, 0);
     errorText_->setStyleClass("error-text");
+}
+
+/**
+ * @brief Set reference to the homepage.
+ * @param homepage Homepage reference
+*/
+void Login::setHomepage(Homepage* homepage) {
+    homepage_ = homepage;
 }
 
 /**

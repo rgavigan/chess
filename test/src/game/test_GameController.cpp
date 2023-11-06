@@ -167,6 +167,8 @@ TEST_F(GameControllerTests, MakeMove) {
     Position kingEnd(7, 6);
     Position rookStart(7, 7);
     Position rookEnd(7, 5);
+    EXPECT_TRUE(controller->getPieceAtPosition(kingStart)->getPieceType() == PieceType::KING);
+    EXPECT_TRUE(controller->getPieceAtPosition(rookStart)->getPieceType() == PieceType::ROOK);
     EXPECT_TRUE(controller->makeMove(kingStart, kingEnd));
     EXPECT_EQ(controller->getGameState()->getMutableBoard().getPieceAtPosition(kingEnd)->getPieceType(), PieceType::KING);
     EXPECT_EQ(controller->getGameState()->getMutableBoard().getPieceAtPosition(rookEnd)->getPieceType(), PieceType::ROOK);
@@ -263,7 +265,8 @@ TEST_F(GameControllerTests, TryMove) {
     EXPECT_TRUE(controller->isKingInCheck());
     Position newStart(1, 6);  // Pawn diagonally in front of king to left 
     Position newEnd(2, 5);
-    EXPECT_FALSE(controller->tryMove(start, end));
+    EXPECT_TRUE(controller->getPieceAtPosition(newStart)->getPieceType() == PieceType::PAWN);
+    EXPECT_FALSE(controller->tryMove(newStart, newEnd));
 }
 
 TEST_F(GameControllerTests, IsKingInCheckmate) {

@@ -30,7 +30,8 @@ UserStatistics::UserStatistics(User* user) {
     // Timer combo box for user to select game timer
     statisticsLayout_->addWidget(std::make_unique<Wt::WText>("Match Timer Minutes: "), 1, 0);
     timerComboBox_ = statisticsLayout_->addWidget(std::make_unique<Wt::WComboBox>(), 1, 1);
-    timerComboBox_->addItem("2");
+    timerComboBox_->addItem("3");
+    timerComboBox_->addItem("5");
     timerComboBox_->addItem("10");
     timerComboBox_->addItem("20");
     timerComboBox_->addItem("30");
@@ -38,6 +39,7 @@ UserStatistics::UserStatistics(User* user) {
     timerComboBox_->addItem("60");
     timerComboBox_->activated().connect(this, &UserStatistics::updateTimer);
     statisticsLayout_->setColumnStretch(1, 1);
+    updateTimer();
 
     // Game Statistics
     gameStatisticsContainer_ = std::make_unique<Wt::WContainerWidget>();

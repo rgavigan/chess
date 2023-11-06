@@ -75,6 +75,33 @@ void Homepage::navigateToPlay() {
 }
 
 /**
+ * @brief Manage text and styling of the login buttons
+ * @param player Player 1 or 2
+ * @param login True if user is logging in, False if no login occurs (user logs out or back button is pressed)
+*/
+void Homepage::manageLoginButtons(int player, bool login) {
+    if(player == 1) { // P1
+        if(login) { // Successful login
+            manageUserOne_->setText("Logout Player 1");
+            manageUserOne_->setStyleClass("logout-button");
+        } else {
+            manageUserOne_->setText("Login Player 1");
+            manageUserOne_->setStyleClass("login-button");
+        }
+    } 
+    
+    else { // P2
+        if(login) { // Successful login
+            manageUserTwo_->setText("Logout Player 2");
+            manageUserTwo_->setStyleClass("logout-button");
+        } else {
+            manageUserTwo_->setText("Login Player 2");
+            manageUserTwo_->setStyleClass("login-button");
+        }
+    }
+}
+
+/**
  * @brief Manage login/logout of user one
  * @date 2023-10-15
  */
@@ -82,14 +109,12 @@ void Homepage::manageUserOne() {
     // Login condition 
     if (user1_->getUsername() == "") {
         parentContainer_->setCurrentIndex(0);
-        manageUserOne_->setText("Logout Player 1");
-        manageUserOne_->setStyleClass("logout-button");
+        manageLoginButtons(1, true);
     }
     // Logout condition 
     else {
         user1_->resetUser();
-        manageUserOne_->setText("Login Player 1");
-        manageUserOne_->setStyleClass("login-button");
+        manageLoginButtons(1, false);
     }
     // Update user statistics component 
     userOneStatistics_->updateStatistics(nullptr);
@@ -103,14 +128,12 @@ void Homepage::manageUserTwo() {
     // Login condition 
     if (user2_->getUsername() == "") {
         parentContainer_->setCurrentIndex(3);
-        manageUserTwo_->setText("Logout Player 2");
-        manageUserTwo_->setStyleClass("logout-button");
+        manageLoginButtons(2, true);
     }
     // Logout condition 
     else { 
         user2_->resetUser();
-        manageUserTwo_->setText("Login Player 2");
-        manageUserTwo_->setStyleClass("login-button");
+        manageLoginButtons(2, false);
     }
     // Update user statistics component 
     userTwoStatistics_->updateStatistics(nullptr);

@@ -23,6 +23,7 @@ class Homepage : public Wt::WObject {
 public:
     Homepage(Wt::WStackedWidget* container, UserStatistics* userOneStatistics, UserStatistics* userTwoStatistics, User* user1, User* user2, GameController* gameController, ChessBoardUI* chessBoardUI);
     ~Homepage();
+    void manageLoginButtons(int player, bool login); 
 
 private:
     Wt::WText *title_;

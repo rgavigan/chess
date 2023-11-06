@@ -163,6 +163,14 @@ void ChessBoardUI::makeMove(Wt::WPushButton* selectedPiece, Wt::WPushButton* des
   // Make move and update accordingly
   if (gameController_->makeMove(start, end)) {
     updateBoard();
+    // check if the move was a pawn promotion
+    if (gameController_->getPieceAtPosition(end)->getPieceType() == PieceType::PAWN && (end.row == 0 || end.row == 7)) {
+      // this is where the promotion UI will be added, 
+      // make it return a PieceType to pass into promotePawn
+      gameController_->promotePawn(end, PieceType::QUEEN);
+      updateBoard(); // updateBoard required twice as initial pawn movement needs to be shown'
+      // as well as the newly selected piece
+    }
     updateForGameStatus();
   }
 }
@@ -402,7 +410,7 @@ void ChessBoardUI::updateForGameStatus() {
     gameStatus == GameStatus::ONGOING ? new std::string("Ongoing") : new std::string("");
 
   // Update the game info panel for the colour and status
-  updateGameInfoPanel(currentColour, gameStatusString); 
+  updateGameInfoPanel(currentColour, gameStatusString);
 
   // Remove check class from previous check pieces
   updateStylesForPositions(checkPieces_, style_);
@@ -414,7 +422,7 @@ void ChessBoardUI::updateForGameStatus() {
   }
   else if (gameStatus == GameStatus::ONGOING) {
     return;
-  } 
+  }
   else if (gameStatus == GameStatus::PROMPTDRAW) {
     handlePromptDrawDialog();
   }
@@ -424,7 +432,7 @@ void ChessBoardUI::updateForGameStatus() {
   else {
     gameController_->endGame();
     timer_->stop();
-    updateGameInfoPanel(currentColour, gameStatusString); 
+    updateGameInfoPanel(currentColour, gameStatusString);
 
     // Disable the chess board buttons
     for (auto& pair : chessBoard_) {
@@ -527,7 +535,7 @@ void ChessBoardUI::handleWinDialog() {
 void ChessBoardUI::handlePromptDrawDialog() {
   if (gameController_->getGameStatus() == GameStatus::ONGOING) {
     // Create the dialog if it doesn't exist
-    
+
     promptDrawDialog_ = pageContainer_->addChild(std::make_unique<Wt::WDialog>("Draw Offer"));
     promptDrawDialog_->contents()->addWidget(std::make_unique<Wt::WText>("Your opponent has offered a draw. Do you accept?"));
     promptDrawDialog_->footer()->addWidget(std::make_unique<Wt::WPushButton>("Accept"))
@@ -540,7 +548,7 @@ void ChessBoardUI::handlePromptDrawDialog() {
       ->clicked().connect([this] {
           promptDrawDialog_->reject();
     });
-    
+
     promptDrawDialog_->show();
   }
   else if (gameController_->getGameStatus() == GameStatus::PROMPTDRAW) {
@@ -556,7 +564,7 @@ void ChessBoardUI::handlePromptDrawDialog() {
         ->clicked().connect([this] {
             promptDrawDialog_->reject();
       });
-  } 
+  }
   promptDrawDialog_->show();
 }
 
@@ -567,7 +575,8 @@ void ChessBoardUI::handleDrawDialog() {
   GameStatus gameStatus = gameController_->getGameStatus();
 
   if (gameStatus == GameStatus::DRAW || gameStatus == GameStatus::STALEMATE) {
-    std::string *gameStatusString = gameStatus == GameStatus::DRAW ? new std::string("Draw") : new std::string("Stalemate");   
+    gameController_->endGame();
+    std::string *gameStatusString = gameStatus == GameStatus::DRAW ? new std::string("Draw") : new std::string("Stalemate");
     drawDialog_ = pageContainer_->addChild(std::make_unique<Wt::WDialog>(*gameStatusString));
     drawDialog_->contents()->addWidget(std::make_unique<Wt::WText>("Would You Like To Play Again?"));
     drawDialog_->footer()->addWidget(std::make_unique<Wt::WPushButton>("Play Again"))
@@ -585,7 +594,7 @@ void ChessBoardUI::handleDrawDialog() {
     drawDialog_->setWindowTitle(*gameStatusString);
     drawDialog_->show();
     }
-    
+
   }
 
 
