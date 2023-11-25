@@ -8,7 +8,6 @@
 #define LOGIN_H
 
 #include <Wt/WContainerWidget.h>
-#include <Wt/WStackedWidget.h>
 #include <Wt/WLineEdit.h>
 #include <Wt/WPushButton.h>
 #include <Wt/WGridLayout.h>
@@ -19,10 +18,11 @@
 #include "User.h"
 #include "UserStatistics.h"
 #include "Homepage.h"
+#include "WStackedWidget.h"
 
 class Login : public Wt::WObject {
 public:
-    Login(Wt::WStackedWidget* container, User* user, UserStatistics* userStatistics, User* otherUser, int player);
+    Login(WStackedWidget* container, User* user, UserStatistics* userStatistics, User* otherUser, int player);
     ~Login();
     void setHomepage(Homepage* homepage);
 
@@ -37,7 +37,7 @@ private:
 
     Wt::WContainerWidget *loginContainer_;
     Wt::WGridLayout *loginLayout_;
-    Wt::WStackedWidget *parentContainer_; /** Parent container stored as a class variable for navigation */
+    WStackedWidget *parentContainer_; /** Parent container stored as a class variable for navigation */
     Homepage *homepage_; /** Reference to homepage */
 
     User *user_; /** User instance to be logged into */
@@ -48,6 +48,8 @@ private:
 
     void login(); /** To login to an existing account */
     void navigateToCreateAccount(); /** To navigate to create account page */
+
+    //std::vector<>getGames();
 };
 
 #endif // LOGIN_H

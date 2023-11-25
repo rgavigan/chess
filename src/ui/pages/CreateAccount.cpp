@@ -12,7 +12,7 @@
  * @brief Construct a new Create Account UI
  * @param container parent Application container
  */
-CreateAccount::CreateAccount(Wt::WStackedWidget* container) {
+CreateAccount::CreateAccount(WStackedWidget* container) {
     parentContainer_ = container; // Copy parent container reference 
 
     // Create the container and layout for the account creation form 
@@ -35,12 +35,14 @@ CreateAccount::CreateAccount(Wt::WStackedWidget* container) {
     passwordInput_->setPlaceholderText("Password");
     passwordInput_->setStyleClass("wt-wlineedit");
     passwordInput_->enterPressed().connect(this, &CreateAccount::createAccount);
+    passwordInput_->setEchoMode(Wt::EchoMode::Password);
 
     // Confirm password input field 
     confirmPasswordInput_ = createAccountLayout_->addWidget(std::make_unique<Wt::WLineEdit>(), 3, 0);
     confirmPasswordInput_->setPlaceholderText("Confirm Password");
     confirmPasswordInput_->setStyleClass("wt-wlineedit");
     confirmPasswordInput_->enterPressed().connect(this, &CreateAccount::createAccount);
+    confirmPasswordInput_->setEchoMode(Wt::EchoMode::Password);
 
     // Button to submit create account request 
     createAccountButton_ = createAccountLayout_->addWidget(std::make_unique<Wt::WPushButton>(), 4, 0);
@@ -87,6 +89,16 @@ void CreateAccount::createAccount() {
     if (!userManager_->createUser(username, password)) {
         // Add error text below create account button 
         errorText_->setText("Username already exists.");
+
+        // Username validity
+        if (!std::regex_match(username, std::regex("^[a-zA-Z0-9-_]+$"))) {
+            errorText_->setText("Username must only contain a-z, A-Z, 0-9, -, and _");
+        }
+
+        // Password validity
+        if (!std::regex_match(password, std::regex("^[a-zA-Z0-9-_*!]+$"))) {
+            errorText_->setText("Password must only contain a-z, A-Z, 0-9, -, _, *, and !");
+        }
         return;
     }
 
@@ -107,6 +119,6 @@ void CreateAccount::createAccount() {
  */
 void CreateAccount::navigateToLogin() {
     // Take the user to the login UI 
-    parentContainer_->setCurrentIndex(parentContainer_->currentIndex() - 1);
+    parentContainer_->setCurrentIndex(parentContainer_->currentIndex() - 1, true);
     return;
 }

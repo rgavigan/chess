@@ -278,9 +278,18 @@ TEST_F(ChessBoardTests, IsPositionOnBoard) {
 }
 
 TEST_F(ChessBoardTests, IsPawnEligibleForEnPassant) {
+    Piece* piece = board->getPieceAtPosition(Position{1, 0});
+    Pawn* pawn = dynamic_cast<Pawn*>(piece);
+    EXPECT_TRUE(pawn->getEnPassant());
+    EXPECT_EQ(pawn->getHasMoved(), 0);
     board->movePiece(Position{1, 0}, Position{3, 0});
+    EXPECT_TRUE(pawn->getEnPassant());
+    EXPECT_EQ(pawn->getHasMoved(), 1);
 
     EXPECT_TRUE(board->isPawnEligibleForEnPassant(Position{3, 0}, Colour::BLACK));
+
+    board->movePiece(Position{3, 0}, Position{4, 0});
+    EXPECT_FALSE(pawn->getEnPassant());
     EXPECT_FALSE(board->isPawnEligibleForEnPassant(Position{1, 1}, Colour::BLACK));
 }
 

@@ -14,6 +14,8 @@
 #include <Wt/WComboBox.h>
 #include <string>
 #include <chrono>
+#include <sstream>
+#include <cmath>
 
 #include "User.h"
 #include "Player.h"
@@ -25,6 +27,7 @@ public:
     std::unique_ptr<Wt::WContainerWidget> getStatisticsContainer();
     std::unique_ptr<Wt::WContainerWidget> getGameStatisticsContainer();
     void updateStatistics(Player *player);
+    void setEloDiff(std::pair<double, double> eloChanges);
 
 private:
     /** Homepage statistics */
@@ -39,6 +42,8 @@ private:
     Wt::WText *gameUserTimer_; /** Information: timer */
     std::unique_ptr<Wt::WContainerWidget> gameStatisticsContainer_;
     Wt::WGridLayout *gameStatisticsLayout_;
+
+    std::string eloDiff_ = ""; /** Elo gained or lost after the current match */
 
     void updateTimer(); /** Update the timer for the user */
 };

@@ -23,6 +23,7 @@ protected:
     int expectedWins = 5;
     int expectedLosses = 3;
     int expectedDraws = 2;
+    double expectedElo = 1100.0;
 
     // Initialize user instance 
     void SetUp() override {
@@ -44,6 +45,7 @@ TEST_F(UserTests, BasicUserInfo) {
     EXPECT_EQ(user->getWins(), 0);
     EXPECT_EQ(user->getLosses(), 0);
     EXPECT_EQ(user->getDraws(), 0);
+    EXPECT_EQ(user->getElo(), 1000.0);
 }
 
 /**
@@ -54,10 +56,12 @@ TEST_F(UserTests, IncrementStats) {
     user->incrementWins();
     user->incrementLosses();
     user->incrementDraws();
+    user->updateElo(234.5);
 
     EXPECT_EQ(user->getWins(), 1);
     EXPECT_EQ(user->getLosses(), 1);
     EXPECT_EQ(user->getDraws(), 1);
+    EXPECT_EQ(user->getElo(), 1234.5);
 }
 
 /**
@@ -65,12 +69,13 @@ TEST_F(UserTests, IncrementStats) {
  * Test getting user statistics (wins, losses, and draws) after initializing them.
  */
 TEST_F(UserTests, GetUserStatsSuccess) {
-    user->initializeStats(expectedWins, expectedLosses, expectedDraws);
+    user->initializeStats(expectedWins, expectedLosses, expectedDraws, expectedElo);
 
     EXPECT_EQ(user->getUsername(), "Alice");
     EXPECT_EQ(user->getWins(), expectedWins);
     EXPECT_EQ(user->getLosses(), expectedLosses); 
     EXPECT_EQ(user->getDraws(), expectedDraws);
+    EXPECT_EQ(user->getElo(), expectedElo);
 }
 
 /**

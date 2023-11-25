@@ -23,6 +23,7 @@ protected:
     UserManager* userManager;
     User* user;
     int wins = 0, losses = 0, draws = 0;
+    double elo = 1000.0;
 
     // Initialize user & user manager instances 
     void SetUp() override {
@@ -94,12 +95,13 @@ TEST_F(UserManagerTests, AuthenticateUserNonExistentUser) {
  */
 TEST_F(UserManagerTests, GetUserStatsSuccess) {
     EXPECT_TRUE(userManager->createUser("Alice", "password"));
-    EXPECT_TRUE(userManager->getUserStats("Alice", wins, losses, draws));
+    EXPECT_TRUE(userManager->getUserStats("Alice", wins, losses, draws, elo));
     
-    user->initializeStats(wins, losses, draws);
+    user->initializeStats(wins, losses, draws, elo);
     EXPECT_EQ(user->getWins(), wins);
     EXPECT_EQ(user->getLosses(), losses);
     EXPECT_EQ(user->getDraws(), draws);
+    EXPECT_EQ(user->getElo(), elo);
 }
 
 /**
@@ -108,7 +110,7 @@ TEST_F(UserManagerTests, GetUserStatsSuccess) {
  */
 TEST_F(UserManagerTests, GetUserStatsNonExistentUser) {
     // Attempt to get stats for a non-existent user 
-    EXPECT_FALSE(userManager->getUserStats("Bob", wins, losses, draws));
+    EXPECT_FALSE(userManager->getUserStats("Bob", wins, losses, draws, elo));
 }
 
 /**
@@ -119,13 +121,14 @@ TEST_F(UserManagerTests, UpdateUserStatsSuccess) {
     EXPECT_TRUE(userManager->createUser("Alice", "password"));
 
     // Update user stats 
-    EXPECT_TRUE(userManager->updateUserStats("Alice", 5, 3, 2));
-    EXPECT_TRUE(userManager->getUserStats("Alice", wins, losses, draws));
+    EXPECT_TRUE(userManager->updateUserStats("Alice", 5, 3, 2, 1100.0));
+    EXPECT_TRUE(userManager->getUserStats("Alice", wins, losses, draws, elo));
     
-    user->initializeStats(wins, losses, draws);
+    user->initializeStats(wins, losses, draws, elo);
     EXPECT_EQ(user->getWins(), wins);
     EXPECT_EQ(user->getLosses(), losses);
     EXPECT_EQ(user->getDraws(), draws);
+    EXPECT_EQ(user->getElo(), elo);
 }
 
 /**
@@ -134,5 +137,5 @@ TEST_F(UserManagerTests, UpdateUserStatsSuccess) {
  */
 TEST_F(UserManagerTests, UpdateUserStatsNonExistentUser) {
     // Attempt to update stats for a non-existent user 
-    EXPECT_FALSE(userManager->updateUserStats("Bob", 5, 3, 2));
+    EXPECT_FALSE(userManager->updateUserStats("Bob", 5, 3, 2, 1100.0));
 }

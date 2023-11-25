@@ -37,10 +37,11 @@ GameState::~GameState() {}
 
 /**
  * @brief Resets the game state to its initial state.
+ * @param testMode If test mode is on, default false.
  */
-void GameState::resetGameState() {
+void GameState::resetGameState(bool testMode) {
     // Resetting the ChessBoard
-    board->initializeBoard();
+    board->initializeBoard(testMode);
 
     // Clearing the board state metadata
     chronologicalData.clear();
@@ -183,7 +184,8 @@ const std::vector<Move>& GameState::getGameHistory() const {
  */
 void GameState::addToGameHistory(const Move& move) {
     gameHistory.emplace_back(move);
-    gameHistoryString += turnMoveIntoString(move) + " ";
+    gameHistoryString += ConversionUtil::turnMoveIntoString(move) + " ";
+    std::cout << "Add to game history string: " << gameHistoryString << std::endl;
 }
 
 /**
@@ -353,41 +355,17 @@ std::string GameState::getGameHistoryString() const {
  */
 void GameState::setGameHistoryString(const std::string& gameHistoryString) {
     this->gameHistoryString = gameHistoryString;
-}
 
-/**
- * @brief Parses a move string into a Move object.
- * @param moveString String representing the move to parse.
- * @return Move object representing the parsed move.
- * @throws std::invalid_argument If the move string is improperly formatted.
- */
-Move GameState::parseMoveString(const std::string& moveString) const {
-    std::unordered_map<char, int> charToColumn = {
-        {'a', 0}, {'b', 1}, {'c', 2}, {'d', 3},
-        {'e', 4}, {'f', 5}, {'g', 6}, {'h', 7}
-    };
-
-    if (moveString.size() != 4) {
-        // Handle invalid move string format
-        throw std::invalid_argument("Invalid move string format: " + moveString);
+    // Split the game history string by spaces
+    std::stringstream ss(gameHistoryString);
+    std::string moveString;
+    std::vector<Move> moves;
+    while (ss >> moveString) {
+        moves.emplace_back(ConversionUtil::turnStringIntoMove(moveString));
     }
 
-    if(charToColumn.find(moveString[0]) == charToColumn.end() ||
-       charToColumn.find(moveString[2]) == charToColumn.end()) {
-        throw std::invalid_argument("Invalid columns in move string: " + moveString);
+    // Go through the moves and add to game history
+    for (const auto& move : moves) {
+       gameHistory.emplace_back(move);
     }
-
-    if (moveString[1] < '1' || moveString[1] > '8' ||
-        moveString[3] < '1' || moveString[3] > '8') {
-        throw std::invalid_argument("Invalid rows in move string: " + moveString);
-    }
-
-    Position start = Position{8 - (moveString[1] - '0'), charToColumn[moveString[0]]};
-    Position end = Position{8 - (moveString[3] - '0'), charToColumn[moveString[2]]};
-
-    PieceType pieceMoved = board->getPieceAtPosition(start)->getPieceType();
-    PieceType pieceCaptured = (board->getPieceAtPosition(end) != nullptr) ? board->getPieceAtPosition(end)->getPieceType() : PieceType::NONE;  // sets captured pieceType to an accurate pieceType if it was not null, otherwise NONE
-    Colour playerColour = getCurrentPlayer()->getColour();
-
-    return Move(start, end, pieceMoved, playerColour, pieceCaptured);
-}
+}   

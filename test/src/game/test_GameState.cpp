@@ -16,6 +16,7 @@
 #include "Piece.h"
 #include "Player.h"
 #include "User.h"
+#include "PGNUtil.h"
 
 /**
  * @brief Test fixture for the GameState class.
@@ -162,10 +163,10 @@ TEST_F(GameStateTests, TestBoardStatesMetadata) {
                         ? gs->getCurrentPlayer()->getName() : gs->getOpponentPlayer()->getName();
 
 
-    std::string pgn = generatePGN(gs->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, gs->getGameStatus(), gs->getBoardStatesMetadata().first);
+    std::string pgn = PGNUtil::generatePGN(gs->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, gs->getGameStatus(), gs->getBoardStatesMetadata().first);
     std::cout << "1 \n " << pgn << std::endl;
 
-    gs->updateBoardStatesMetadata(pgn, getCurrentDate());
+    gs->updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
     BoardMetadata initialMetadata = gs->getBoardStatesMetadata().first[0];
     
     EXPECT_EQ(gs->getBoardStatesMetadata().first.size(), 1);
@@ -188,10 +189,10 @@ TEST_F(GameStateTests, TestBoardStatesMetadata) {
     gs->switchTurns();
     gs->setLastMove(Move(Position{6, 0}, Position{4, 0}, PieceType::PAWN, Colour::WHITE));
 
-    pgn = generatePGN(gs->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, gs->getGameStatus(), gs->getBoardStatesMetadata().first);
+    pgn = PGNUtil::generatePGN(gs->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, gs->getGameStatus(), gs->getBoardStatesMetadata().first);
     std::cout << "2 \n " << pgn << std::endl;
 
-    gs->updateBoardStatesMetadata(pgn, getCurrentDate());
+    gs->updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
     BoardMetadata updatedMetadata = gs->getBoardStatesMetadata().first[1];
 
     EXPECT_EQ(gs->getBoardStatesMetadata().first.size(), 2);
@@ -212,14 +213,14 @@ TEST_F(GameStateTests, TestBoardStatesMetadata) {
 
     gs->getMutableBoard().initializeBoard(); // reset board to see a copy in the metadata (i.e see a repeated board state)
 
-    pgn = generatePGN(gs->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, gs->getGameStatus(), gs->getBoardStatesMetadata().first);
+    pgn = PGNUtil::generatePGN(gs->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, gs->getGameStatus(), gs->getBoardStatesMetadata().first);
 
     std::cout << "3 \n " << pgn << std::endl;
 
-    gs->updateBoardStatesMetadata(pgn, getCurrentDate());
-    gs->updateBoardStatesMetadata(pgn, getCurrentDate());
-    gs->updateBoardStatesMetadata(pgn, getCurrentDate());
-    gs->updateBoardStatesMetadata(pgn, getCurrentDate());
+    gs->updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
+    gs->updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
+    gs->updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
+    gs->updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
 
     EXPECT_EQ(gs->getBoardStatesMetadata().second[gs->getMutableBoard().getBoardStateAsString()].size(), 5);
 }
@@ -404,41 +405,4 @@ TEST_F(GameStateTests, SwitchTurnsTest) {
 
     EXPECT_EQ(gs->getCurrentPlayer()->getName(), "Bob");
     EXPECT_EQ(gs->getOpponentPlayer()->getName(), "Alice");
-}
-
-TEST_F(GameStateTests, ParsingMoveStrings) {
-    std::string moveString = "a2a4";
-
-    Move move = gs->parseMoveString(moveString);
-
-    EXPECT_EQ(move.start, Position(6, 0));
-    EXPECT_EQ(move.end, Position(4, 0));
-    EXPECT_EQ(move.pieceMoved, PieceType::PAWN);
-    EXPECT_EQ(move.pieceCaptured, PieceType::NONE);
-    EXPECT_EQ(move.playerColour, Colour::WHITE);
-
-    moveString = "a2a4 ";
-
-    // catch thrown exceptions 
-    EXPECT_THROW(gs->parseMoveString(moveString), std::invalid_argument);
-
-    moveString = "a2a4a";
-    EXPECT_THROW(gs->parseMoveString(moveString), std::invalid_argument);
-
-    moveString = "x2y4";
-    EXPECT_THROW(gs->parseMoveString(moveString), std::invalid_argument);
-
-    moveString = "a2a9";
-    EXPECT_THROW(gs->parseMoveString(moveString), std::invalid_argument);
-
-    moveString = "a2a";
-    EXPECT_THROW(gs->parseMoveString(moveString), std::invalid_argument);
-
-    moveString = "g1f3";
-    move = gs->parseMoveString(moveString);
-    EXPECT_EQ(move.start, Position(7, 6));
-    EXPECT_EQ(move.end, Position(5, 5));
-    EXPECT_EQ(move.pieceMoved, PieceType::KNIGHT);
-    EXPECT_EQ(move.pieceCaptured, PieceType::NONE);
-    EXPECT_EQ(move.playerColour, Colour::WHITE);
 }

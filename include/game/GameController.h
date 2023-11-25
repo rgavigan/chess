@@ -17,21 +17,27 @@
 #include <string>
 #include <chrono>
 #include <memory>
+#include <math.h>
+#include <utility>
 #include <sqlite3.h>
 #include <iostream>
 #include <fstream>
+#include <unordered_map>
 #include <sstream>
 #include <cstdlib>
 #include <regex>
 #include "GameState.h"
 #include "Piece.h"
 #include "Piece.h"
-#include "Utilities.h"
+#include "DataUtil.h"
+#include "SQLUtil.h"
+#include "PGNUtil.h"
+#include "ConversionUtil.h"
 
 class GameController {
 public:
     /** Constructs the GameController with specified players and database name. */
-    GameController(std::unique_ptr<Player> whitePlayer, std::unique_ptr<Player> blackPlayer, std::string dbname);
+    GameController(std::unique_ptr<Player> whitePlayer, std::unique_ptr<Player> blackPlayer, std::string dbname, bool testMode = false);
 
     /** Destructor for the GameController class. */
     virtual ~GameController();
@@ -54,8 +60,14 @@ public:
    /** Saves the current game state. */
     bool saveGame();
 
+    /** Returns the number of saved games for two given users */
+    int getNumSaves(User* user1, User* user2);
+
     /** Loads a game state from the database using the game ID. */
-    bool loadGame(int gameID);
+    bool loadGame(int gameID, User* user1, User* user2);
+
+    /** Removes a game from the database using the game ID. */
+    bool removeGame(int gameID);
 
     /**
      * @brief Retrieves the game history.
@@ -100,8 +112,6 @@ public:
     /** Retrieves the remaining time for the current player's turn. */
     std::chrono::duration<double> getRemainingTime() const;
 
-    /** Retrieves the difficulty setting for the Stockfish chess engine. */
-    Difficulty getStockfishDifficulty() const;
     /** Retrieves the board state metadata and corresponding indices. */
     std::pair<std::vector<BoardMetadata>, std::unordered_map<std::string, std::vector<int>>> getBoardStatesMetadata() const;
 
@@ -129,8 +139,6 @@ public:
     /** Updates the status of the game. */
     void setGameStatus(GameStatus status);
 
-    /** Sets the difficulty setting for the Stockfish chess engine. */
-    void setStockfishDifficulty(Difficulty difficulty);
 
     /** Updates the board states metadata. */
     void updateBoardStatesMetadata(std::string PGNstring, std::string timestamp);
@@ -147,9 +155,6 @@ public:
     /** Promotes a pawn to another piece type. */
     bool promotePawn(const Position& position, PieceType type);
 
-    /** Generates possible moves using the Stockfish chess engine based on the player's last move. */
-    std::vector<Move> generateStockfishMoves();
-
     /** Retrieves the current turn number. */
     int getTurnNumber() const;
 
@@ -159,11 +164,22 @@ public:
     /* Retrieves the game's move history as a string. */
     std::string getGameHistoryString() const;
 
+    /** Gets the state of test mode. */
+    bool getTestMode();
+
+    /** Gets all the loadable games for 2 users */
+    std::vector<std::unordered_map<std::string, std::string>> getLoadableGames(User* user1, User* user2);
+
+    /** Calculates the change in a player's Elo based on if they won or lost. Returns both values. */
+    std::pair<double, double> getEloChange(double currentElo, double opponentElo);
+
 private:
+    static constexpr double eloConstant = 20.0;        /** Constant used in elo calculation. */ 
+
     std::unique_ptr<GameState> gameState;          /** Holds the current state of the chess game including board, pieces, moves, etc. */
     int gameID;                                     /** A unique identifier for this game instance. Useful for databases, logging, or multi-game management. */
     sqlite3* db;                                    /** A pointer to the SQLite database connection for persisting game data. */
-    Difficulty stockfishDifficulty;                 /** The current difficulty setting for the Stockfish chess engine. */
+    bool testMode;                                  /** State denoting test mode. */
 
     /** Generates a new game ID. */
     int generateGameID();
@@ -201,12 +217,14 @@ private:
     /** Sets the start time for the current turn. */
     void setTurnStartTime(std::chrono::steady_clock::time_point timePoint);
 
-
-    /** Parses a move in string format and returns a Move object. */
-    Move parseMoveString(const std::string& moveString) const;
-
     /** Sets the game's move history using a string. */
     void setGameHistoryString(const std::string& history);
+
+    /** Calculates the probability of the current player winning. */
+    double chanceOfWinning(double currentElo, double opponentElo);
+    
+    /** Calculates the change in a player's Elo based on if they won or lost. Returns one value. */
+    double getEloChange(double currentElo, double opponentElo, double score);
 };
 
 #endif // GAME_CONTROLLER_H

@@ -21,7 +21,7 @@
  * @param username The username of the user.
  */
 User::User(const std::string& username) : username(username) {
-
+    
 }
 
 /**
@@ -77,16 +77,42 @@ void User::incrementDraws() {
     ++draws;
 }
 
+/** 
+ * @brief Gets the user's Elo rating. 
+ * @return User's Elo.
+*/
+double User::getElo() {
+    return elo;
+}
+
+/**
+ * @brief Gets the user's Elo rating rounded to an integer.
+ * @return User's rounded Elo.
+*/
+int User::getRoundedElo() {
+    return std::round(elo);
+}
+
+/** 
+ * @brief Updates the user's Elo rating.
+ * @param eloChange Change in Elo.  
+*/
+void User::updateElo(double eloChange) {
+    elo += eloChange;
+}
+
 /**
  * @brief Initializes the stats of the user.
  * @param wins The number of wins to set.
  * @param losses The number of losses to set.
  * @param draws The number of draws to set.
+ * @param elo The Elo rating to set.
  */
-void User::initializeStats(int wins, int losses, int draws) {
+void User::initializeStats(int wins, int losses, int draws, double elo) {
     this->wins = wins;
     this->losses = losses;
     this->draws = draws;
+    this->elo = elo;
 }
 
 /**
@@ -102,7 +128,7 @@ void User::setUsername(const std::string& username) {
 void User::resetUser() {
     std::string username = "";
     this->setUsername(username);
-    this->initializeStats(0, 0, 0);
+    this->initializeStats(0, 0, 0, 1000.0);
 }
 
 /**

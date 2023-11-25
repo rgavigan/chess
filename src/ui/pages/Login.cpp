@@ -14,7 +14,7 @@
  * @param otherUser other user
  * @param player player 1 or 2
  */
-Login::Login(Wt::WStackedWidget* container, User* user, UserStatistics* userStatistics, User* otherUser, int player) {
+Login::Login(WStackedWidget* container, User* user, UserStatistics* userStatistics, User* otherUser, int player) {
     parentContainer_ = container; // Copy parent container reference 
 
     user_ = user;
@@ -42,6 +42,7 @@ Login::Login(Wt::WStackedWidget* container, User* user, UserStatistics* userStat
     passwordInput_->setPlaceholderText("Password");
     passwordInput_->setStyleClass("wt-wlineedit");
     passwordInput_->enterPressed().connect(this, &Login::login);
+    passwordInput_->setEchoMode(Wt::EchoMode::Password);
 
     // Button to submit login request to the back-end 
     loginButton_ = loginLayout_->addWidget(std::make_unique<Wt::WPushButton>(), 3, 0);
@@ -60,7 +61,7 @@ Login::Login(Wt::WStackedWidget* container, User* user, UserStatistics* userStat
     backButton_->setText("Continue as Guest");
     backButton_->setStyleClass("text-button");
     backButton_->clicked().connect([=] {
-        parentContainer_->setCurrentIndex(5);
+        parentContainer_->setCurrentIndex(5, true);
         homepage_->manageLoginButtons(player_, false);
     });
 
@@ -112,10 +113,11 @@ void Login::login() {
     int wins = 0;
     int losses = 0;
     int draws = 0;
-    if (!userManager_->getUserStats(username, wins, losses, draws)) {
+    double elo = 1000.0;
+    if (!userManager_->getUserStats(username, wins, losses, draws, elo)) {
         return;
     }
-    user_->initializeStats(wins, losses, draws);
+    user_->initializeStats(wins, losses, draws, elo);
 
     // Clear user and password input fields 
     usernameInput_->setText("");
@@ -126,7 +128,7 @@ void Login::login() {
     userStatistics_->updateStatistics(nullptr);
 
     // Navigate to the home page for the chess application 
-    parentContainer_->setCurrentIndex(5);
+    parentContainer_->setCurrentIndex(5, true);
 }
 
 /**
@@ -135,5 +137,5 @@ void Login::login() {
  */
 void Login::navigateToCreateAccount() {
     // Set the current widget to the create account UI
-    parentContainer_->setCurrentIndex(parentContainer_->currentIndex() + 1);
+    parentContainer_->setCurrentIndex(parentContainer_->currentIndex() + 1, true);
 }

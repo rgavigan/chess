@@ -102,12 +102,15 @@ void Pawn::updateValidMoves(const ChessBoard& board) {
     }
 
     // En Passant, can only occur on row 4 (index 3) for white pawns, and row 5 (index 4) for black pawns 
-    if ((colour_modifier == 1 && curr_row == 3) || (colour_modifier == -1 && curr_row == 4)) {
+    if ((colour_modifier == 1 && curr_row == 4) || (colour_modifier == -1 && curr_row == 3)) {
         int adjacent_cols[2] = {curr_col - 1, curr_col + 1};
         for (int col : adjacent_cols) {
             if (board.isPositionOnBoard(Position{curr_row, col})) {
                 Position adjacent_position{curr_row, col};
-                if (board.isPawnEligibleForEnPassant(adjacent_position, oppositeColour(getColour()))) {
+                if (board.isPawnEligibleForEnPassant(adjacent_position, ConversionUtil::oppositeColour(getColour()))) {
+                    if (colour_modifier == -1) {
+                        std::cout << "En passant!" << " Position: " << forward_row << ", " << col << std::endl;
+                    }
                     validMoves.emplace_back(Position{forward_row, col});
                 }
             }

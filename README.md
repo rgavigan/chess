@@ -11,8 +11,11 @@ make clean && make
 
 # Run the application on the desired port
 ./main_app --docroot . --http-listen 0.0.0.0:<port-number>
+
+# Alternatively, just use the shell script provided to do everything in one line
+./run.sh <port>
 ```
-Use any web browser to connect to http://127.0.0.1:port-number to play the Wordle application.
+Use any web browser to connect to http://127.0.0.1:port-number to play the PiChess application.
 
 ## Playing the Application Online
 Navigate to [chess.rileygavigan.com](https://chess.rileygavigan.com)

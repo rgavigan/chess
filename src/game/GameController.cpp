@@ -9,7 +9,7 @@
  * logic and state. The class also acts as the core engine for the chess game, handling game rules, validating moves, and executing 
  * game actions while interacting with the GameState to access and modify the game's current state.
  *
- * @author Bradley McGlynn, Chris Hosang
+ * @author Bradley McGlynn, Chris Hosang, Riley Gavigan, Satvir Singh Uppal
  * @date September 28th, 2023
  */
 
@@ -29,8 +29,8 @@
 /**
  * @brief Constructs a GameController object.
  */
-GameController::GameController(std::unique_ptr<Player> whitePlayer, std::unique_ptr<Player> blackPlayer, std::string dbname) :
-    gameState(std::make_unique<GameState>(std::move(whitePlayer), std::move(blackPlayer))), stockfishDifficulty(Difficulty::HARD) {
+GameController::GameController(std::unique_ptr<Player> whitePlayer, std::unique_ptr<Player> blackPlayer, std::string dbname, bool testMode) :
+    gameState(std::make_unique<GameState>(std::move(whitePlayer), std::move(blackPlayer))) {
     // Open SQl database 
     if(sqlite3_open(dbname.c_str(), &db) != SQLITE_OK) {
         std::cerr << "Can't open database: " << std::string(sqlite3_errmsg(db)) << std::endl;
@@ -43,15 +43,20 @@ GameController::GameController(std::unique_ptr<Player> whitePlayer, std::unique_
                         "BOARDSTATE TEXT NOT NULL,"             // String representation of chess board 
                         "TURNNUMBER INTEGER,"                   // Turn number 
                         "GAMESTATUS TEXT,"                      // Game status (ongoing, check etc.) 
-                        "P1MINS REAL,"                          // Match timers, as doubles 
-                        "P2MINS REAL);"
+                        "CURRENTTIME REAL,"                          // Match timers, as doubles 
+                        "OPPONENTTIME REAL,"
+                        "GAMEHISTORY TEXT NOT NULL);"
 
                         "CREATE TABLE IF NOT EXISTS GAMEDATA("
                         "GAMEID INTEGER,"                       
-                        "USERNAME1 TEXT NOT NULL,"              // Usernames, as strings 
-                        "USERNAME2 TEXT NOT NULL,"
-                        "COLOUR1 INTEGER,"                      // Player colours, as 0: white, 1: black 
-                        "COLOUR2 INTEGER);";          
+                        "CURRENTUSER TEXT NOT NULL,"              // Usernames, as strings 
+                        "OPPONENTUSER TEXT NOT NULL,"
+                        "CURRENTCOLOUR TEXT NOT NULL,"                // Colours, as strings
+                        "OPPONENTCOLOUR TEXT NOT NULL,"
+                        "PGN TEXT NOT NULL,"
+                        "TIMESTAMP TEXT NOT NULL,"
+                        "USER1 TEXT NOT NULL,"
+                        "USER2 TEXT NOT NULL);";          
 
     char* errMsg;
     if (sqlite3_exec(db, sql.c_str(), 0, 0, &errMsg) != SQLITE_OK) {
@@ -59,11 +64,9 @@ GameController::GameController(std::unique_ptr<Player> whitePlayer, std::unique_
         sqlite3_close(db);
     }
 
-    addColumnIfNotExists(db, "GAMEDATA", "PGN", "TEXT");
-    addColumnIfNotExists(db, "GAMEDATA", "TIMESTAMP", "TEXT");
-
     // Initialize Game ID 
     gameID = generateGameID();
+    this->testMode = testMode;
 }
  
 /**
@@ -82,7 +85,7 @@ GameController::~GameController() {
 void GameController::startGame(std::unique_ptr<Player> whitePlayer, std::unique_ptr<Player> blackPlayer) {
     // Start the game by initializing game components 
     // and setting up the initial state and logic 
-    gameState->resetGameState();
+    gameState->resetGameState(testMode);
 
     gameState->setCurrentPlayer(std::move(whitePlayer));
     gameState->setOpponentPlayer(std::move(blackPlayer));
@@ -116,6 +119,12 @@ bool GameController::saveGame() {
     std::string duplicateq = "SELECT COUNT(*) FROM GAMEDATA WHERE GAMEID = ?;";
     sqlite3_stmt* duplicate_stmt;
 
+    auto stateData = getBoardStatesMetadata().first;
+    // Don't allow saving an empty match that just started
+    if (stateData.size() == 0) {
+        return false;
+    }
+
     int count = -1;
     if(sqlite3_prepare_v2(db, duplicateq.c_str(), -1, &duplicate_stmt, 0) == SQLITE_OK) {
         sqlite3_bind_int(duplicate_stmt, 1, gameID);
@@ -125,81 +134,190 @@ bool GameController::saveGame() {
         sqlite3_finalize(duplicate_stmt);
     }
 
-    // If game data doesn't exist yet, create it 
-    if(count <= 0) {
-        std::string username1 = getCurrentPlayer()->getUser().getUsername();
-        std::string username2 = getOpponentPlayer()->getUser().getUsername();
-
-        int col1 = getCurrentPlayer()->getColour() == Colour::WHITE ? 0 : 1;
-        int col2 = 1 - col1;
-
-        auto now = std::chrono::system_clock::now();
-        std::time_t now_c = std::chrono::system_clock::to_time_t(now);
-        std::string timestamp = std::ctime(&now_c); 
-
-        std::string whitePlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
-                            ? username1 : username2;
-
-        std::string blackPlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
-                            ? username2 : username1;
-
-        std::string pgn = generatePGN(getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, getGameStatus(), getBoardStatesMetadata().first);
-
-        std::string dataq = "INSERT INTO GAMEDATA(GAMEID, USERNAME1, USERNAME2, COLOUR1, COLOUR2, PGN, TIMESTAMP) "
-                        "VALUES (?, ?, ?, ?, ?, ?, ?);";
-        sqlite3_stmt* data_stmt;
-
-        if(sqlite3_prepare_v2(db, dataq.c_str(), -1, &data_stmt, 0) == SQLITE_OK) {
-            sqlite3_bind_int(data_stmt, 1, gameID);
-            sqlite3_bind_text(data_stmt, 2, username1.c_str(), -1, SQLITE_STATIC);
-            sqlite3_bind_text(data_stmt, 3, username2.c_str(), -1, SQLITE_STATIC);
-            sqlite3_bind_int(data_stmt, 4, col1);
-            sqlite3_bind_int(data_stmt, 5, col2);
-            sqlite3_bind_text(data_stmt, 6, pgn.c_str(), -1, SQLITE_STATIC);
-            sqlite3_bind_text(data_stmt, 7, timestamp.c_str(), -1, SQLITE_STATIC);
-
-            if(sqlite3_step(data_stmt) == SQLITE_DONE) {
-                sqlite3_finalize(data_stmt);
-            }
-        } 
+    // If the game already exists, delete it to be replaced
+    if(count > 0) {
+        removeGame(gameID);
     }
+    // Get users and colours
+    std::string currentUser = getCurrentPlayer()->getUser().getUsername();
+    std::string opponentUser = getOpponentPlayer()->getUser().getUsername();
+    std::string currentColour = getCurrentPlayer()->getColour() == Colour::WHITE ? "White" : "Black";
+    std::string opponentColour = getOpponentPlayer()->getColour() == Colour::WHITE ? "White" : "Black";
 
-    // Save all board state metadata to database 
-    std::string q = "INSERT INTO GAMESTATE(GAMEID, BOARDSTATE, TURNNUMBER, GAMESTATUS, P1MINS, P2MINS, P1MINS, P2MINS) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
-    
-    auto stateData = getBoardStatesMetadata().first;
-    for(int i = 0; i < stateData.size(); i++) {
-        auto currState = stateData[i];
-        GameStatus status = currState.gameStatus;
-        std::string stringStatus = gameStatusToString(status);
-        
-        sqlite3_stmt* game_stmt;
-        if(sqlite3_prepare_v2(db, q.c_str(), -1, &game_stmt, 0) == SQLITE_OK) {
-            sqlite3_bind_int(game_stmt, 1, gameID);
-            sqlite3_bind_text(game_stmt, 2, currState.boardState.c_str(), -1, SQLITE_STATIC);
-            sqlite3_bind_int(game_stmt, 3, currState.turnNumber);
-            sqlite3_bind_text(game_stmt, 4, stringStatus.c_str(), -1, SQLITE_STATIC);            
-            sqlite3_bind_double(game_stmt, 5, gameState->getCurrentPlayer()->getTimeLeft().count());
-            sqlite3_bind_double(game_stmt, 6, gameState->getOpponentPlayer()->getTimeLeft().count());            
+    // Get timestamp
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+    std::string timestamp = std::ctime(&now_c); 
 
-            if(sqlite3_step(game_stmt) == SQLITE_DONE) {
-                sqlite3_finalize(game_stmt);
-            }
+    // Get user 1 and user 2
+    std::string user1 = getCurrentPlayer()->getColour() == Colour::WHITE 
+                        ? currentUser : opponentUser;
+
+    std::string user2 = getCurrentPlayer()->getColour() == Colour::WHITE 
+                        ? opponentUser : currentUser;
+
+    // Get PGN for the game
+    std::string pgn = PGNUtil::generatePGN(getCurrentPlayer()->getName(), user1, user2, getGameStatus(), getBoardStatesMetadata().first);
+
+    // Query for GAMEDATA table
+    std::string dataq = "INSERT INTO GAMEDATA(GAMEID, CURRENTUSER, OPPONENTUSER, CURRENTCOLOUR, OPPONENTCOLOUR, PGN, TIMESTAMP, USER1, USER2) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    sqlite3_stmt* data_stmt;
+
+    if(sqlite3_prepare_v2(db, dataq.c_str(), -1, &data_stmt, 0) == SQLITE_OK) {
+        // Add Game ID
+        sqlite3_bind_int(data_stmt, 1, gameID);
+
+        // Add Current User and Opponent User
+        sqlite3_bind_text(data_stmt, 2, currentUser.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(data_stmt, 3, opponentUser.c_str(), -1, SQLITE_STATIC);
+
+        // Add Current Colour and Opponent Colour
+        sqlite3_bind_text(data_stmt, 4, currentColour.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(data_stmt, 5, opponentColour.c_str(), -1, SQLITE_STATIC);
+
+        // Add PGN
+        sqlite3_bind_text(data_stmt, 6, pgn.c_str(), -1, SQLITE_STATIC);
+
+        // Add Timestamp of Game
+        sqlite3_bind_text(data_stmt, 7, timestamp.c_str(), -1, SQLITE_STATIC);
+
+        // Add User 1/2's Name For Tracking (User 1 is White)
+        sqlite3_bind_text(data_stmt, 8, user1.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(data_stmt, 9, user2.c_str(), -1, SQLITE_STATIC);
+
+        // Finalize the statement
+        if(sqlite3_step(data_stmt) == SQLITE_DONE) {
+            sqlite3_finalize(data_stmt);
         }
     }
 
+    // Query for GAMESTATE Table
+    std::string q = "INSERT INTO GAMESTATE(GAMEID, BOARDSTATE, TURNNUMBER, GAMESTATUS, CURRENTTIME, OPPONENTTIME, GAMEHISTORY) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?);";
+
+    // Get the GameStatus (ONGOING or CHECK)
+    GameStatus status = stateData[stateData.size() - 1].gameStatus;
+    std::string stringStatus = ConversionUtil::gameStatusToString(status);
+
+    sqlite3_stmt* game_stmt;
+    if(sqlite3_prepare_v2(db, q.c_str(), -1, &game_stmt, 0) == SQLITE_OK) {
+        // Add Game ID
+        sqlite3_bind_int(game_stmt, 1, gameID);
+
+        // Add Board State String
+        sqlite3_bind_text(game_stmt, 2, stateData[stateData.size() - 1].boardState.c_str(), -1, SQLITE_STATIC);
+
+        // Add Turn Number
+        sqlite3_bind_int(game_stmt, 3, stateData[stateData.size() - 1].turnNumber);
+
+        // Add Game Status String
+        sqlite3_bind_text(game_stmt, 4, stringStatus.c_str(), -1, SQLITE_STATIC);
+
+        // Add Time Left          
+        sqlite3_bind_double(game_stmt, 5, gameState->getCurrentPlayer()->getTimeLeft().count());
+        sqlite3_bind_double(game_stmt, 6, gameState->getOpponentPlayer()->getTimeLeft().count());      
+     
+        // Add Game History String
+        std::string gameHistory = getGameHistoryString();
+        sqlite3_bind_text(game_stmt, 7, gameHistory.c_str(), -1, SQLITE_STATIC);
+
+        // Finalize statement
+        if(sqlite3_step(game_stmt) == SQLITE_DONE) {
+            sqlite3_finalize(game_stmt);
+        }
+    }
     return true;
 }
+int GameController::getNumSaves(User* user1, User* user2){
+    // Get usernames of both users
+    std::string username1 = user1->getUsername();
+    std::string username2 = user2->getUsername();
+
+    std::string savesq = "SELECT COUNT(GAMEID) FROM GAMEDATA WHERE USER1 = ? AND USER2 = ?;";
+    sqlite3_stmt* count_stmt;
+
+    int count = 0;
+    if(sqlite3_prepare_v2(db, savesq.c_str(), -1, &count_stmt, 0) == SQLITE_OK) {
+        // Bind username1 and username2
+        sqlite3_bind_text(count_stmt, 1, username1.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(count_stmt, 2, username2.c_str(), -1, SQLITE_STATIC);
+
+        if(sqlite3_step(count_stmt) == SQLITE_ROW) {
+            count = sqlite3_column_int(count_stmt, 0);
+        }
+        sqlite3_finalize(count_stmt);
+    }
+    return count;
+}
+
+/**
+ * @brief Gets all of the loadable game IDs for 2 users
+ * 
+ * @param user1 the first user
+ * @param user2 the second user
+ * @return std::vector<int, std::vector<std::string>> a vector of game IDs
+ * The vector of strings contains: Current Player, Opponent Player, Current Colour, Opponent Colour, Timestamp
+ */
+std::vector<std::unordered_map<std::string, std::string>> GameController::getLoadableGames(User* user1, User* user2) {
+    std::vector<std::unordered_map<std::string, std::string>> loadableGames;
+
+    // Get usernames of both users
+    std::string username1 = user1->getUsername();
+    std::string username2 = user2->getUsername();
+
+    std::string savesq = "SELECT GAMEID, CURRENTUSER, OPPONENTUSER, CURRENTCOLOUR, OPPONENTCOLOUR, TIMESTAMP FROM GAMEDATA WHERE USER1 = ? AND USER2 = ?;";
+    sqlite3_stmt* game_stmt;
+
+    if(sqlite3_prepare_v2(db, savesq.c_str(), -1, &game_stmt, 0) == SQLITE_OK) {
+        // Bind username1 and username2
+        sqlite3_bind_text(game_stmt, 1, username1.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(game_stmt, 2, username2.c_str(), -1, SQLITE_STATIC);
+
+        while(sqlite3_step(game_stmt) == SQLITE_ROW) {
+            std::unordered_map<std::string, std::string> gameData;
+            int gameID = sqlite3_column_int(game_stmt, 0);
+
+            gameData["gameID"] = std::to_string(gameID);
+            gameData["currentUser"] = reinterpret_cast<const char*>(sqlite3_column_text(game_stmt, 1));
+            gameData["opponentUser"] = reinterpret_cast<const char*>(sqlite3_column_text(game_stmt, 2));
+            gameData["currentColour"] = reinterpret_cast<const char*>(sqlite3_column_text(game_stmt, 3));
+            gameData["opponentColour"] = reinterpret_cast<const char*>(sqlite3_column_text(game_stmt, 4));
+            gameData["timestamp"] = std::to_string(sqlite3_column_double(game_stmt, 5));
+
+            std::string savesq2 = "SELECT TURNNUMBER, GAMESTATUS, CURRENTTIME, OPPONENTTIME FROM GAMESTATE WHERE GAMEID = ?;";
+            sqlite3_stmt* game_stmt2;
+
+            if(sqlite3_prepare_v2(db, savesq2.c_str(), -1, &game_stmt2, 0) == SQLITE_OK) {
+                // Bind game ID
+                sqlite3_bind_int(game_stmt2, 1, gameID);
+
+                while(sqlite3_step(game_stmt2) == SQLITE_ROW) {
+                    gameData["turnNumber"] = std::to_string(sqlite3_column_int(game_stmt2, 0));
+                    gameData["gameStatus"] = reinterpret_cast<const char*>(sqlite3_column_text(game_stmt2, 1));
+                    gameData["currentTime"] = std::to_string(sqlite3_column_double(game_stmt2, 2));
+                    gameData["opponentTime"] = std::to_string(sqlite3_column_double(game_stmt2, 3));
+                }
+                sqlite3_finalize(game_stmt2);
+            }
+
+            loadableGames.push_back(gameData);
+        }
+        sqlite3_finalize(game_stmt);
+    }
+
+    return loadableGames;
+}
+
 
 /**
  * @brief Loads a game state from a file.
  * @param gameID ID of the game to be loaded.
  * @return true if the game was successfully loaded, false otherwise.
  */
-bool GameController::loadGame(int gameID) {
-    // Get saved game data 
-    std::string dataq = "SELECT * FROM GAMEDATA WHERE GAMEID = ?;";
+bool GameController::loadGame(int gameID, User* user1, User* user2) {
+    // Select from GAMEDATA table
+    std::string dataq = "SELECT CURRENTUSER, OPPONENTUSER, CURRENTCOLOUR, OPPONENTCOLOUR, PGN, TIMESTAMP, USER1, USER2 FROM GAMEDATA WHERE GAMEID = ?;";
     sqlite3_stmt* data_stmt;
 
     if(sqlite3_prepare_v2(db, dataq.c_str(), -1, &data_stmt, NULL) != SQLITE_OK) {
@@ -208,41 +326,117 @@ bool GameController::loadGame(int gameID) {
     }
     sqlite3_bind_int(data_stmt, 1, gameID);
 
-    std::unique_ptr<Player> newP1, newP2;
-    Colour newColour1, newColour2;
+    gameState->resetGameState();
 
     int step = sqlite3_step(data_stmt); 
     if(step == SQLITE_ROW) {
-        std::string newUsername1(reinterpret_cast<const char*>(sqlite3_column_text(data_stmt, 1)));
-        std::string newUsername2(reinterpret_cast<const char*>(sqlite3_column_text(data_stmt, 2)));
-        int col1 = sqlite3_column_int(data_stmt, 3);
-        int col2 = sqlite3_column_int(data_stmt, 4);
-        std::string pgn(reinterpret_cast<const char*>(sqlite3_column_text(data_stmt, 5)));
-        std::string timestamp(reinterpret_cast<const char*>(sqlite3_column_text(data_stmt, 6)));
-        
-        User user1(newUsername1);
-        User user2(newUsername2);
-
-        if(col1 == 0) {
-            newColour1 = Colour::WHITE;
-            newColour2 = Colour::BLACK;
+        // Get Current User and Opponent User
+        std::string currentUsername(reinterpret_cast<const char*>(sqlite3_column_text(data_stmt, 0)));
+        std::string opponentUsername(reinterpret_cast<const char*>(sqlite3_column_text(data_stmt, 1)));
+        std::string currentColourString(reinterpret_cast<const char*>(sqlite3_column_text(data_stmt, 2)));
+        std::string opponentColourString(reinterpret_cast<const char*>(sqlite3_column_text(data_stmt, 3)));
+        Colour currentColour, opponentColour;
+        if (currentColourString == "White") {
+            currentColour = Colour::WHITE;
+            opponentColour = Colour::BLACK;
         } else {
-            newColour1 = Colour::BLACK;
-            newColour2 = Colour::WHITE;
+            currentColour = Colour::BLACK;
+            opponentColour = Colour::WHITE;
         }
-        
-        newP1 = std::make_unique<Player>(user1, newColour1, std::chrono::minutes(0)); // Placeholder durations 
-        newP2 = std::make_unique<Player>(user2, newColour2, std::chrono::minutes(0)); 
 
-    } else {
+        // Get PGN for the game
+        std::string pgn = reinterpret_cast<const char*>(sqlite3_column_text(data_stmt, 4));
+
+        // Get timestamp for the game
+        std::string timestamp = reinterpret_cast<const char*>(sqlite3_column_text(data_stmt, 5));
+
+        User* currentUser = currentUsername == user1->getUsername() ? user1 : user2;
+        User* opponentUser = opponentUsername == user1->getUsername() ? user1 : user2;
+        
+        // Initialize players with initial timers of 0 minutes
+        setCurrentPlayer(std::make_unique<Player>(*currentUser, currentColour, std::chrono::minutes(0)));
+        setOpponentPlayer(std::make_unique<Player>(*opponentUser, opponentColour, std::chrono::minutes(0)));
+    } 
+    else {
         std::cerr << "Failed to fetch data from GAMEDATA: " << step << std::endl;
         sqlite3_finalize(data_stmt);
         return false;     
     }
     sqlite3_finalize(data_stmt);
 
-    // Get saved game states  
-    std::string stateq = "SELECT * FROM GAMESTATE WHERE GAMEID = ? ORDER BY TURNNUMBER;";
+    // Select from GAMESTATE table
+    std::string stateq = "SELECT BOARDSTATE, TURNNUMBER, GAMESTATUS, CURRENTTIME, OPPONENTTIME, GAMEHISTORY FROM GAMESTATE WHERE GAMEID = ? ORDER BY TURNNUMBER;";
+    sqlite3_stmt* game_stmt;
+
+    if(sqlite3_prepare_v2(db, stateq.c_str(), -1, &game_stmt, NULL) != SQLITE_OK) {
+        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
+        return false;
+    }
+    sqlite3_bind_int(game_stmt, 1, gameID);
+
+    // Replace current game with saved game states 
+    while(sqlite3_step(game_stmt) == SQLITE_ROW) {
+        // Initialize GameState Chess Board from BOARDSTATE
+        getMutableBoard().initializeBoardFromString(reinterpret_cast<const char*>(sqlite3_column_text(game_stmt, 0)));
+
+        // Set turn number to TURNNUMBER
+        setTurnNumber(sqlite3_column_int(game_stmt, 1));
+
+        // Get Game Status and set it from GAMESTATUS
+        std::string status(reinterpret_cast<const char*>(sqlite3_column_text(game_stmt, 2))); 
+        setGameStatus(ConversionUtil::stringToGameStatus(status));
+
+        // Get Current Player Time and Opponent Player Time and set them
+        getCurrentPlayer()->setTimeLeft(std::chrono::duration<double>(sqlite3_column_double(game_stmt, 3)));
+        getOpponentPlayer()->setTimeLeft(std::chrono::duration<double>(sqlite3_column_double(game_stmt, 4)));
+
+        // Get game history string
+        std::string gameHistory(reinterpret_cast<const char*>(sqlite3_column_text(game_stmt, 5)));
+        setGameHistoryString(gameHistory);
+
+        // Update board state metadata
+        std::string pgn = PGNUtil::generatePGN(getCurrentPlayer()->getName(), user1->getUsername(), user2->getUsername(), getGameStatus(), getBoardStatesMetadata().first);
+        updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
+    }
+    sqlite3_finalize(game_stmt);
+
+    std::cout << "Loaded Game History: " << getGameHistoryString() << std::endl;
+
+    // Update the Player's User
+    getCurrentPlayer()->getUser().setUsername(getCurrentPlayer()->getName());
+    getOpponentPlayer()->getUser().setUsername(getOpponentPlayer()->getName());
+
+    this->gameID = gameID;
+    return true;
+}
+
+/**
+ * @brief Removes a game from the database with gameID provided
+ * 
+ * @return true if removed successfully
+ * @return false if not removed
+ */
+bool GameController::removeGame(int gameID) {
+    // Remove game data from GAMEDATA
+    std::string dataq = "DELETE FROM GAMEDATA WHERE GAMEID = ?;";
+    sqlite3_stmt* data_stmt;
+
+    if(sqlite3_prepare_v2(db, dataq.c_str(), -1, &data_stmt, NULL) != SQLITE_OK) {
+        std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
+        return false;
+    }
+    sqlite3_bind_int(data_stmt, 1, gameID);
+
+    int step = sqlite3_step(data_stmt); 
+    if(step != SQLITE_DONE) {
+        std::cerr << "Failed to remove data from GAMEDATA: " << step << std::endl;
+        sqlite3_finalize(data_stmt);
+        return false;     
+    }
+    sqlite3_finalize(data_stmt);
+
+    // Remove game states from GAMESTATE
+    std::string stateq = "DELETE FROM GAMESTATE WHERE GAMEID = ?;";
     sqlite3_stmt* game_stmt;
 
     if(sqlite3_prepare_v2(db, stateq.c_str(), -1, &game_stmt, NULL) != SQLITE_OK) {
@@ -252,40 +446,15 @@ bool GameController::loadGame(int gameID) {
 
     sqlite3_bind_int(game_stmt, 1, gameID);
 
-    // Reset current game 
-    gameState->resetGameState();
-    gameState->setCurrentPlayer(std::move(newP1));
-    gameState->setOpponentPlayer(std::move(newP2));
-
-    // Replace current game with saved game states 
-    while(sqlite3_step(game_stmt) == SQLITE_ROW) {
-        gameState->getMutableBoard().initializeBoardFromString(reinterpret_cast<const char*>(sqlite3_column_text(game_stmt, 1)));
-        setTurnNumber(sqlite3_column_int(game_stmt, 2));
-        std::string status(reinterpret_cast<const char*>(sqlite3_column_text(game_stmt, 3))); 
-
-        GameStatus gameStatus = stringToGameStatus(status);
-
-        gameState->getCurrentPlayer()->setTimeLeft(std::chrono::duration<double>(sqlite3_column_double(game_stmt, 4)));
-        gameState->getOpponentPlayer()->setTimeLeft(std::chrono::duration<double>(sqlite3_column_double(game_stmt, 5)));
-
-        setGameStatus(gameStatus);
-
-
-        // Update board state metadata 
-        std::string whitePlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
-                            ? getCurrentPlayer()->getName() : getOpponentPlayer()->getName();
-
-        std::string blackPlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
-                            ? getOpponentPlayer()->getName() : getCurrentPlayer()->getName();
-
-        std::string pgn = generatePGN(getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, getGameStatus(), getBoardStatesMetadata().first);
-
-        updateBoardStatesMetadata(pgn, getCurrentDate());
+    step = sqlite3_step(game_stmt);
+    if(step != SQLITE_DONE) {
+        std::cerr << "Failed to remove data from GAMESTATE: " << step << std::endl;
+        sqlite3_finalize(game_stmt);
+        return false;     
     }
     sqlite3_finalize(game_stmt);
 
-    this->gameID = gameID;
-    
+    std::cout << "Game ID " << gameID << " removed." << std::endl;
     return true;
 }
 
@@ -293,6 +462,10 @@ bool GameController::loadGame(int gameID) {
  * @brief End the game and update the user statistics.
  */
 void GameController::endGame() {
+    if(testMode) {
+        return;
+    }
+
     //  Increment draws in case of draw 
     if (getGameStatus() == GameStatus::DRAW || getGameStatus() == GameStatus::STALEMATE) {
         getCurrentPlayer()->getUser().incrementDraws();
@@ -307,17 +480,27 @@ void GameController::endGame() {
         // Update the underlying user with a loss for the loser 
         Player* loser = (winner == getCurrentPlayer()) ? getOpponentPlayer() : getCurrentPlayer();
         loser->getUser().incrementLosses();
+
+        // Update both user's Elo ratings
+        double winnerElo = winner->getUser().getElo();
+        double loserElo = loser->getUser().getElo();
+
+        winner->getUser().updateElo(getEloChange(winnerElo, loserElo, 1.0));
+        loser->getUser().updateElo(getEloChange(loserElo, winnerElo, 0.0));
     }
     // Create UserManager instance 
     UserManager userManager = UserManager("db/default.sql");
     
     // Update databases for user stats 
     if (getCurrentPlayer()->getUser().getUsername() != "") {
-        userManager.updateUserStats(getCurrentPlayer()->getUser().getUsername(), getCurrentPlayer()->getUser().getWins(), getCurrentPlayer()->getUser().getLosses(), getCurrentPlayer()->getUser().getDraws());
+        userManager.updateUserStats(getCurrentPlayer()->getUser().getUsername(), getCurrentPlayer()->getUser().getWins(), getCurrentPlayer()->getUser().getLosses(), getCurrentPlayer()->getUser().getDraws(), getCurrentPlayer()->getUser().getElo());
     }
     if (getOpponentPlayer()->getUser().getUsername() != "") {
-        userManager.updateUserStats(getOpponentPlayer()->getUser().getUsername(), getOpponentPlayer()->getUser().getWins(), getOpponentPlayer()->getUser().getLosses(), getOpponentPlayer()->getUser().getDraws());
+        userManager.updateUserStats(getOpponentPlayer()->getUser().getUsername(), getOpponentPlayer()->getUser().getWins(), getOpponentPlayer()->getUser().getLosses(), getOpponentPlayer()->getUser().getDraws(), getOpponentPlayer()->getUser().getElo());
     }
+
+    // Remove the game from the database if it exists
+    removeGame(gameID);
 }
 
 /**
@@ -402,6 +585,7 @@ std::pair<std::vector<BoardMetadata>, std::unordered_map<std::string, std::vecto
  * @brief Updates the board states metadata, adding it in chronological order as well as keeping track of that board states occurrences.
  */
 void GameController::updateBoardStatesMetadata(std::string PGNstring, std::string timestamp) {
+    gameState->setGameStatus(getGameStatus());
     gameState->updateBoardStatesMetadata(PGNstring, timestamp);
 }
 
@@ -581,10 +765,10 @@ bool GameController::validateMove(const Position& start, const Position& end) co
  * @return true if the move is executed, false otherwise.
  */
 bool GameController::makeMove(const Position& start, const Position& end) {
-    if (validateMove(start, end)) {
+    if (testMode || validateMove(start, end)) {
         // Make sure the move is in the vector of getPossibleMoves (makes sure you can't do a diff move when in check)
         std::vector<Position> possibleMoves = getPossibleMoves(start);
-        if (std::find(possibleMoves.begin(), possibleMoves.end(), end) == possibleMoves.end()) {
+        if (!testMode && std::find(possibleMoves.begin(), possibleMoves.end(), end) == possibleMoves.end()) {
             std::cout << "Invalid move" << std::endl;
             return false;
         }
@@ -593,18 +777,26 @@ bool GameController::makeMove(const Position& start, const Position& end) {
         Piece* movingPiece = gameState->getMutableBoard().getPieceAtPosition(start);
         Piece* capturedPiece = gameState->getMutableBoard().getPieceAtPosition(end);
 
+        if(capturedPiece && capturedPiece->getPieceType() == PieceType::KING) {
+            std::cout << "Invalid move" << std::endl;
+            return false;
+        } 
+
         PieceType movingPieceType = movingPiece->getPieceType();
         Colour movingPieceColour = movingPiece->getColour();
         PieceType capturedPieceType = capturedPiece ? capturedPiece->getPieceType() : PieceType::NONE;
 
         Move currentMove(start, end, movingPieceType, movingPieceColour, capturedPieceType);
+
+        // Print out the move
+        std::cout << "Move: " << ConversionUtil::turnMoveIntoString(currentMove) << std::endl;
         
         setLastMove(currentMove);
         addToGameHistory(currentMove);
-        gameState->getMutableBoard().movePiece(start, end);
+        gameState->getMutableBoard().movePiece(start, end, testMode);
 
         // check if king has castled, move corresponding rook
-        if(movingPieceType == PieceType::KING && abs(start.col - end.col) == 2) {
+        if(!testMode && movingPieceType == PieceType::KING && abs(start.col - end.col) == 2) {
             int rookCol = end.col == 2 ? 0 : 7;
             int rookEndCol = end.col == 2 ? 3 : 5;
             Position rookStartPos = Position(end.row, rookCol);
@@ -615,12 +807,19 @@ bool GameController::makeMove(const Position& start, const Position& end) {
             gameState->getMutableBoard().getPieceAtPosition(rookEndPos)->updateValidMoves(gameState->getMutableBoard());
         }
 
-        if(movingPieceType == PieceType::PAWN && (movingPieceColour == Colour::WHITE && end.row == 0) 
-            || (movingPieceColour == Colour::BLACK && end.row == 7)) {
+        if(!testMode && movingPieceType == PieceType::PAWN && ((movingPieceColour == Colour::WHITE && end.row == 0) 
+            || (movingPieceColour == Colour::BLACK && end.row == 7))) {
                 // allow pawn to be promoted first before switching turns 
                 updateGameStatus();
                 return true;
             }
+        
+        // En passant 
+        if (movingPieceType == PieceType::PAWN && capturedPiece == nullptr && start.col != end.col) {
+            int capturedPieceRow = movingPieceColour == Colour::WHITE ? end.row + 1 : end.row - 1;
+            Position capturedPiecePosition{capturedPieceRow, end.col};
+            gameState->getMutableBoard().placePiece(capturedPiecePosition, nullptr);
+        }
     
         std::string whitePlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
                             ? getCurrentPlayer()->getName() : getOpponentPlayer()->getName();
@@ -628,10 +827,6 @@ bool GameController::makeMove(const Position& start, const Position& end) {
         std::string blackPlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
                             ? getOpponentPlayer()->getName() : getCurrentPlayer()->getName();
 
-        std::string pgn = generatePGN(getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, getGameStatus(), getBoardStatesMetadata().first);
-
-        updateBoardStatesMetadata(pgn, getCurrentDate());
-        switchTurns();
         // update valid moves for all other pieces based on the new board state 
         ChessBoard& boardMatrix = gameState->getMutableBoard();
         for(int row = 0; row < 8; ++row) {
@@ -642,7 +837,12 @@ bool GameController::makeMove(const Position& start, const Position& end) {
                 }
             }
         }
+        switchTurns();
         updateGameStatus();
+
+        std::string pgn = PGNUtil::generatePGN(getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, getGameStatus(), getBoardStatesMetadata().first);
+        updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
+
         return true;
     };
     std::cout << "Invalid move" << std::endl;
@@ -658,11 +858,12 @@ bool GameController::makeMove(const Position& start, const Position& end) {
 std::vector<Position> GameController::getPossibleMoves(const Position& position) const {
     Piece* piece = gameState->getMutableBoard().getPieceAtPosition(position);
     if (piece) {
+        piece->updateValidMoves(gameState->getMutableBoard());
         // If King is in check, only show moves that remove check 
         if (isKingInCheck()) {
             std::vector<Position> possibleMoves;
             for (const auto& move : piece->getValidMoves()) {
-                if (tryMove(position, move)) {
+                if (testMode || tryMove(position, move)) {
                     possibleMoves.push_back(move);
                 }
             }
@@ -672,7 +873,7 @@ std::vector<Position> GameController::getPossibleMoves(const Position& position)
         else if (!isKingInCheck()) {
             std::vector<Position> possibleMoves;
             for (const auto& move : piece->getValidMoves()) {
-                if (tryMove(position, move)) { // If the king isn't in check after the move, 
+                if (testMode || tryMove(position, move)) { // If the king isn't in check after the move, 
                                                     //then it is a valid move 
                     possibleMoves.push_back(move);
                 }
@@ -733,9 +934,9 @@ bool GameController::promotePawn(const Position& position, PieceType type) {
     std::string blackPlayerName = getCurrentPlayer()->getColour() == Colour::WHITE 
                         ? getOpponentPlayer()->getName() : getCurrentPlayer()->getName();
 
-    std::string pgn = generatePGN(getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, getGameStatus(), getBoardStatesMetadata().first);
+    std::string pgn = PGNUtil::generatePGN(getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, getGameStatus(), getBoardStatesMetadata().first);
 
-    updateBoardStatesMetadata(pgn, getCurrentDate());
+    updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
 
     // Update valid moves and board status
     switchTurns();
@@ -749,6 +950,7 @@ bool GameController::promotePawn(const Position& position, PieceType type) {
                 }
             }
         }
+
 
     updateGameStatus();
 
@@ -764,7 +966,7 @@ bool GameController::isKingInCheck() const {
     Position kingPosition = gameState->getMutableBoard().getKingPosition(currentPlayerColour);
 
     // Loop through all the opponent's pieces and see if any can move to the king's position 
-    for (const auto& piece : gameState->getMutableBoard().getPiecesOfColour(oppositeColour(currentPlayerColour))) {
+    for (const auto& piece : gameState->getMutableBoard().getPiecesOfColour(ConversionUtil::oppositeColour(currentPlayerColour))) {
         if (piece->isValidMove(piece->getPosition(), kingPosition)) {
             return true; // The king is in check if any opponent piece can move to the king's position 
         }
@@ -785,7 +987,7 @@ std::vector<Position> GameController::getCheckPieces() const {
     checkPieces.push_back(kingPosition);
 
     // Loop through all the opponent's pieces and see if any can move to the king's position 
-    for (const auto& piece : gameState->getMutableBoard().getPiecesOfColour(oppositeColour(currentPlayerColour))) {
+    for (const auto& piece : gameState->getMutableBoard().getPiecesOfColour(ConversionUtil::oppositeColour(currentPlayerColour))) {
         if (piece->isValidMove(piece->getPosition(), kingPosition)) {
             checkPieces.push_back(piece->getPosition());
         }
@@ -814,7 +1016,7 @@ bool GameController::tryMove(const Position& start, const Position& end) const {
     // Check if the king is still in check after the move 
     Colour currentPlayerColour = gameState->getCurrentPlayer()->getColour();
     Position kingPosition = boardCopy->getKingPosition(currentPlayerColour);
-    for (const auto& piece : boardCopy->getPiecesOfColour(oppositeColour(currentPlayerColour))) {
+    for (const auto& piece : boardCopy->getPiecesOfColour(ConversionUtil::oppositeColour(currentPlayerColour))) {
         piece->updateValidMoves(*boardCopy);
         if (piece->isValidMove(piece->getPosition(), kingPosition)) {
             return false; // The king is still in check after the move 
@@ -927,58 +1129,11 @@ void GameController::setPlayerResigning() {
 }
 
 /**
- * @brief Generates a list of moves from Stockfish based on the player's last move.
- * @return A vector containing all possible moves for the piece at the given position.
- */
-std::vector<Move> GameController::generateStockfishMoves() {
-    int stockfishSkillLevel;
-    if (getStockfishDifficulty() == Difficulty::HARD) {
-        stockfishSkillLevel = 20;
-    }
-    else if (getStockfishDifficulty() == Difficulty::MEDIUM) {
-        stockfishSkillLevel = 10;
-    }
-    else if (getStockfishDifficulty() == Difficulty::EASY) {
-        stockfishSkillLevel = 0;
-    }
-
-    // Generate the commands for Stockfish and write to a temporary script 
-    std::ofstream script("temp_script.sh");
-    script << "#!/bin/sh\n";
-    script << "./stockfish-binary << EOF\n";
-    script << "uci\n";
-    script << "setoption name Skill Level value " << stockfishSkillLevel << "\n";  
-    script << "position startpos moves " << getGameHistoryString() << "\n";
-    script << "go movetime " << "5000" << "\n";  
-    script << "quit\nEOF\n";
-    script.close();
-
-    // Set execute permissions for the script 
-    system("chmod +x temp_script.sh");
-
-    // Run the script and redirect the output to output.txt 
-    system("./temp_script.sh > output.txt 2>&1");
-
-    // Remove the temporary script 
-    system("rm temp_script.sh");
-
-    // Read the results from output.txt 
-    std::ifstream infile("output.txt");
-    std::string line;
-    std::string stockfishOutput;
-    while (std::getline(infile, line)) {
-        stockfishOutput += line + "\n";
-    }
-    infile.close();
-
-    // Parse Stockfish's output to create Move objects 
-    std::vector<std::string> stockfishMoveStrings = parseStockfishOutput(stockfishOutput);
-    std::vector<Move> stockfishMoves;
-    for (const auto& moveString : stockfishMoveStrings) {
-        stockfishMoves.emplace_back(parseMoveString(moveString));
-    }
-
-    return stockfishMoves;
+ * @brief Gets the current test mode.
+ * @return Test mode.
+*/
+bool GameController::getTestMode() {
+    return testMode;
 }
 
 /**
@@ -997,28 +1152,37 @@ void GameController::setGameHistoryString(const std::string& gameHistoryString) 
     return gameState->setGameHistoryString(gameHistoryString);
 }
 
+
+
 /**
- * @brief Converts a move string representation to a Move object.
- * @param moveString A string representation of a move.
- * @return A Move object corresponding to the parsed move string.
- */
-Move GameController::parseMoveString(const std::string& moveString) const {
-    return gameState->parseMoveString(moveString);
+ * @brief Calculates the probability of the current player winning. 
+ * @param currentElo Current player's Elo.
+ * @param opponentElo Opponent player's Elo.
+ * @return Probability of current player winning, in the range [0, 1].
+*/
+double GameController::chanceOfWinning(double currentElo, double opponentElo) {
+    // For more information behind this algorithm's intuition: https://mattmazzola.medium.com/understanding-the-elo-rating-system-264572c7a2b4
+    return (1.0 / (1.0 + pow(10, ((opponentElo - currentElo) / 400))));
 }
 
 /**
- * @brief Retrieves the current difficulty setting of Stockfish.
- * @return The current difficulty setting.
- */
-Difficulty GameController::getStockfishDifficulty() const {
-    return stockfishDifficulty;
+ * @brief Calculates the change in a player's Elo based on if they won or lost.
+ * @param currentElo Current player's Elo.
+ * @param opponentElo Opponent player's Elo.
+ * @param score 1.0 if the current player won, 0.0 if the opponent player won.
+ * @returns Change in Elo.
+*/
+double GameController::getEloChange(double currentElo, double opponentElo, double score) {
+    return eloConstant * (score - chanceOfWinning(currentElo, opponentElo));
 }
 
+
 /**
- * @brief Updates the difficulty setting for Stockfish.
- * @param difficulty The desired difficulty setting.
- */
-void GameController::setStockfishDifficulty(Difficulty difficulty) {
-    stockfishDifficulty = difficulty;
+ * @brief Calculates the change in a player's Elo based on if they won or lost.
+ * @param currentElo Current player's Elo.
+ * @param opponentElo Opponent player's Elo.
+ * @returns Pair of Elo ratings: (change if win, change if lose).
+*/
+std::pair<double, double> GameController::getEloChange(double currentElo, double opponentElo) {
+    return std::make_pair<double, double>(eloConstant * (1.0 - chanceOfWinning(currentElo, opponentElo)), eloConstant * (0.0 - chanceOfWinning(currentElo, opponentElo)));
 }
-                                             

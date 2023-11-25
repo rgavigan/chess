@@ -15,6 +15,7 @@
 #include <vector>
 #include <string>
 #include <chrono>
+#include <cmath>
 #include "UserManager.h"
 
 /**
@@ -47,8 +48,17 @@ public:
     /** Increments the number of draws of the user. */
     void incrementDraws();
 
+    /** Gets the user's Elo rating. */
+    double getElo();
+
+    /** Gets the user's Elo rating rounded to an integer. */
+    int getRoundedElo();
+
+    /** Updates the user's Elo rating. */
+    void updateElo(double eloChange);
+
     /** Initializes the stats of the user. */
-    void initializeStats(int wins, int losses, int draws);
+    void initializeStats(int wins, int losses, int draws, double elo);
 
     /** Sets the username of the user. */
     void setUsername(const std::string& username);
@@ -73,6 +83,7 @@ private:
     int wins = 0; ///< The number of wins of the user.
     int losses = 0; ///< The number of losses of the user.
     int draws = 0; ///< The number of draws of the user.
+    double elo = 1000.0; ///< The user's Elo rating.
     std::vector<int> games; ///< List of user's saved games.
     std::chrono::minutes timer = std::chrono::minutes(10); ///< The user's selected timer.
 };

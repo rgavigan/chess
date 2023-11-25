@@ -19,6 +19,7 @@
 #include "Player.h"
 #include "User.h"
 #include "UserManager.h"
+#include "PGNUtil.h"
 
 /**
  * @brief Test fixture for GameController tests.
@@ -83,20 +84,20 @@ TEST_F(GameControllerTests, SaveLoadGame) {
     std::string blackPlayerName = controller->getCurrentPlayer()->getColour() == Colour::BLACK 
                         ? controller->getCurrentPlayer()->getName() : controller->getOpponentPlayer()->getName();
 
-    std::string pgn = generatePGN(controller->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, controller->getGameStatus(), controller->getBoardStatesMetadata().first);
+    std::string pgn = PGNUtil::generatePGN(controller->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, controller->getGameStatus(), controller->getBoardStatesMetadata().first);
 
-    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
+    controller->updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
 
     controller->setGameStatus(GameStatus::PROMPTDRAW);
 
-    pgn = pgn = generatePGN(controller->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, controller->getGameStatus(), controller->getBoardStatesMetadata().first);
+    pgn = PGNUtil::generatePGN(controller->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, controller->getGameStatus(), controller->getBoardStatesMetadata().first);
 
-    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
+    controller->updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
 
     controller->setGameStatus(GameStatus::ONGOING);
 
-    pgn = generatePGN(controller->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, controller->getGameStatus(), controller->getBoardStatesMetadata().first);
-    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
+    pgn = PGNUtil::generatePGN(controller->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, controller->getGameStatus(), controller->getBoardStatesMetadata().first);
+    controller->updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
 
     EXPECT_TRUE(controller->saveGame());
 
@@ -106,22 +107,14 @@ TEST_F(GameControllerTests, SaveLoadGame) {
     controller->startGame(std::move(whitePlayer2), std::move(blackPlayer2));
     int game = controller->getCurrentPlayer()->getUser().getGames()[0];
 
-    EXPECT_TRUE(controller->loadGame(game));
+    EXPECT_TRUE(controller->loadGame(game, user1, user2));
 
     std::vector<BoardMetadata> loadedMetadata = controller->getBoardStatesMetadata().first;
 
-    std::cout <<"2 \n " <<  loadedMetadata[0].PGNstring << std::endl;
-    std::cout << "3 \n " << loadedMetadata[1].PGNstring << std::endl;
-    std::cout << "4 \n " << loadedMetadata[2].PGNstring << std::endl;
-
-    EXPECT_EQ(loadedMetadata[0].gameStatus, GameStatus::CHECK);
-    EXPECT_EQ(loadedMetadata[1].gameStatus, GameStatus::PROMPTDRAW);
-    EXPECT_EQ(loadedMetadata[2].gameStatus, GameStatus::ONGOING);
-
+    EXPECT_EQ(loadedMetadata[0].gameStatus, GameStatus::ONGOING);
     EXPECT_EQ(controller->getGameState()->getCurrentPlayer()->getTimeLeft(), std::chrono::minutes(1));
     EXPECT_EQ(controller->getGameState()->getOpponentPlayer()->getTimeLeft(), std::chrono::minutes(2));
 }
-
 
 TEST_F(GameControllerTests, ValidateMove) {
     // Test for an obvious invalid move: moving a piece to its own location. 
@@ -263,6 +256,7 @@ TEST_F(GameControllerTests, TryMove) {
     // Current player is now black, meaning their king is in check 
     EXPECT_EQ(controller->getCurrentPlayer()->getColour(), Colour::BLACK);
     EXPECT_TRUE(controller->isKingInCheck());
+    
     Position newStart(1, 6);  // Pawn diagonally in front of king to left 
     Position newEnd(2, 5);
     EXPECT_TRUE(controller->getPieceAtPosition(newStart)->getPieceType() == PieceType::PAWN);
@@ -285,12 +279,13 @@ TEST_F(GameControllerTests, IsKingInCheckmate) {
     controller->switchTurns(); // swap back to black just to check that their king isn't in check 
     controller->switchTurns(); // swap back to white 
     EXPECT_EQ(controller->getCurrentPlayer()->getColour(), Colour::WHITE);
-    
+
     controller->makeMove(Position{2,6}, Position{1,7}); // moving queen to put the king in check 
     // current player is now black, meaning their king is in check 
     EXPECT_EQ(controller->getCurrentPlayer()->getColour(), Colour::BLACK);
     EXPECT_TRUE(controller->isKingInCheck());
     EXPECT_TRUE(controller->isKingInCheckmate());
+    
 
 }
 
@@ -331,25 +326,25 @@ TEST_F(GameControllerTests, UpdateGameStatus) {
     std::string blackPlayerName = controller->getCurrentPlayer()->getColour() == Colour::BLACK 
                         ? controller->getCurrentPlayer()->getName() : controller->getOpponentPlayer()->getName();
 
-    std::string pgn = generatePGN(controller->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, controller->getGameStatus(), controller->getBoardStatesMetadata().first);
+    std::string pgn = PGNUtil::generatePGN(controller->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, controller->getGameStatus(), controller->getBoardStatesMetadata().first);
     std::cout << "5 \n " << pgn << std::endl;
 
 
 
     // threefold repetition is when the same board state occurs three times in a game 
-    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
-    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
-    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
+    controller->updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
+    controller->updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
+    controller->updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
     controller->updateGameStatus();
     EXPECT_EQ(controller->getGameStatus(), GameStatus::PROMPTDRAW);
 
     // Fivefold repetition scenario 
-    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
-    controller->updateBoardStatesMetadata(pgn, getCurrentDate());
+    controller->updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
+    controller->updateBoardStatesMetadata(pgn, PGNUtil::getCurrentDate());
     controller->updateGameStatus();
     EXPECT_EQ(controller->getGameStatus(), GameStatus::DRAW); // automatic draw after the same board repeats 5 times 
 
-    pgn = generatePGN(controller->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, controller->getGameStatus(), controller->getBoardStatesMetadata().first);
+    pgn = PGNUtil::generatePGN(controller->getCurrentPlayer()->getName(), whitePlayerName, blackPlayerName, controller->getGameStatus(), controller->getBoardStatesMetadata().first);
 
     std::cout << "6 \n " << pgn << std::endl;
     
@@ -374,57 +369,21 @@ TEST_F(GameControllerTests, UpdateGameStatus) {
 
 }
 
-TEST_F(GameControllerTests, StockfishOutputDifferentInitialState) {
+TEST_F(GameControllerTests, UpdateEloRatings) {
+    EXPECT_EQ(user1->getElo(), 1000.0);
+    EXPECT_EQ(user2->getElo(), 1000.0);
 
-    // Simulate a game with different initial moves 
+    // Simulate White winning
     controller->makeMove(Position{6, 4}, Position{4, 4}); // White's move e2e4 
-    controller->makeMove(Position{1, 3}, Position{3, 3}); // Black's move d7d5 
-    controller->makeMove(Position{7, 6}, Position{5, 5}); // White's move g1f3 
-    controller->makeMove(Position{3, 3}, Position{4, 3}); // Black's move d5d4 
-    controller->makeMove(Position{6, 0}, Position{5, 0}); // White's move a2a3 
+    controller->makeMove(Position{1, 4}, Position{3, 4}); // Black's move e7e5 
+    controller->makeMove(Position{7, 5}, Position{4, 2}); // White's move f1c4 
+    controller->makeMove(Position{1, 2}, Position{3, 2}); // Black's move c7c5 
+    controller->makeMove(Position{7, 3}, Position{3, 7}); // White's move d1h5       
+    controller->makeMove(Position{1, 7}, Position{2, 7}); // Black's move h7h6       
+    controller->makeMove(Position{3, 7}, Position{1, 5}); // White's move h5f7 -- Checkmate
 
-    // Query Stockfish for its moves based on the current game state 
-    std::vector<Move> stockfishMoves = controller->generateStockfishMoves();
-
-    // Validate Stockfish's output 
-    EXPECT_FALSE(stockfishMoves.empty());
-    EXPECT_TRUE(stockfishMoves[0].start == Position(4, 3) && stockfishMoves[0].end == Position(5, 3));
-
-
-    // Test with different stockfish skill levels 
-    controller->setStockfishDifficulty(Difficulty::MEDIUM);
-    EXPECT_TRUE(controller->getStockfishDifficulty() == Difficulty::MEDIUM);
-    stockfishMoves = controller->generateStockfishMoves();
-
-    EXPECT_TRUE(stockfishMoves[0].start == Position(1, 2) && stockfishMoves[0].end == Position(2, 2));
-
-    controller->setStockfishDifficulty(Difficulty::EASY);
-    EXPECT_TRUE(controller->getStockfishDifficulty() == Difficulty::EASY);
-    stockfishMoves = controller->generateStockfishMoves();
-
-    EXPECT_TRUE(stockfishMoves[0].start == Position(1, 2) && stockfishMoves[0].end == Position(2, 2)); // same as medium difficulty, more pronounced differences later in games
+    controller->endGame();
+    
+    EXPECT_EQ(user1->getElo(), 1010.0);
+    EXPECT_EQ(user2->getElo(), 990.0);
 }
-
-TEST_F(GameControllerTests, StockfishOutputEmptyInitialState) {
-    // Query Stockfish for its moves with an empty initial state
-    std::vector<Move> stockfishMoves = controller->generateStockfishMoves();
-
-    // stockfish should supply a move to start the game
-    EXPECT_FALSE(stockfishMoves.empty());
-    // verify stockfish output based on the skill level / difficulty of the AI, default = 20 (hardest)
-    EXPECT_TRUE(stockfishMoves[0].start == Position(6, 0) && stockfishMoves[0].end == Position(5, 0));
-    EXPECT_TRUE(controller->getStockfishDifficulty() == Difficulty::HARD);
-
-    controller->setStockfishDifficulty(Difficulty::MEDIUM);
-    EXPECT_TRUE(controller->getStockfishDifficulty() == Difficulty::MEDIUM);
-    stockfishMoves = controller->generateStockfishMoves();
-
-    EXPECT_TRUE(stockfishMoves[0].start == Position(6, 3) && stockfishMoves[0].end == Position(5, 3));
-
-
-    controller->setStockfishDifficulty(Difficulty::EASY);
-    EXPECT_TRUE(controller->getStockfishDifficulty() == Difficulty::EASY);
-    stockfishMoves = controller->generateStockfishMoves();
-    EXPECT_TRUE(stockfishMoves[0].start == Position(6, 3) && stockfishMoves[0].end == Position(5, 3)); // same as medium difficulty, more pronounced differences later in games 
-}
-

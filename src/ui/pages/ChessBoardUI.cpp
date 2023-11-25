@@ -2,6 +2,7 @@
  * @file ChessBoardUI.cpp
  * @author Nicholas Corcoran (ncorcor@uwo.ca)
  * @author Riley Emma Gavigan (rgavigan@uwo.ca)
+ * @author Satvir Singh Uppal (suppal46@uwo.ca)
  * @brief This class contains the chess board page
  * @date 2023-10-14
  */
@@ -18,15 +19,11 @@
  * @param userTwoStatistics Pointer to the second user's statistics.
  * @param timer Timer to decrement current player time.
  */
-ChessBoardUI::ChessBoardUI(Wt::WStackedWidget* container, GameController *gameController, User *user1, User *user2, UserStatistics* userOneStatistics, UserStatistics* userTwoStatistics)
+ChessBoardUI::ChessBoardUI(WStackedWidget* container, GameController *gameController)
 {
   // Setting class variables from parameters
   parentContainer_ = container;
   gameController_ = gameController;
-  user1_ = user1;
-  user2_ = user2;
-  userOneStatistics_ = userOneStatistics;
-  userTwoStatistics_ = userTwoStatistics;
 
   // Container for the page itself to hold the board and other necessary components
   pageContainer_ = parentContainer_->addWidget(std::make_unique<Wt::WContainerWidget>());
@@ -34,11 +31,26 @@ ChessBoardUI::ChessBoardUI(Wt::WStackedWidget* container, GameController *gameCo
   pageLayout_ = pageContainer_->setLayout(std::make_unique<Wt::WGridLayout>());
 
   // Container to hold the chess board
-  container_ = pageLayout_->addWidget(std::make_unique<Wt::WContainerWidget>(), 2 ,0, 1, 1);
+  container_ = pageLayout_->addWidget(std::make_unique<Wt::WContainerWidget>(), 2, 0, 1, 1);
   container_->setStyleClass("centered-board-container");
 
   // Layout for the chess board
   boardLayout_ = container_->setLayout(std::make_unique<Wt::WGridLayout>());
+}
+
+void ChessBoardUI::initializeComponents(User *user1, User *user2, UserStatistics* userOneStatistics, UserStatistics* userTwoStatistics) {
+  user1_ = user1;
+  user2_ = user2;
+  userOneStatistics_ = userOneStatistics;
+  userTwoStatistics_ = userTwoStatistics;
+
+  // Homepage button to navigate back to homepage and stop the match
+  homepageButton_ = pageLayout_->addWidget(std::make_unique<Wt::WPushButton>(), 0, 0);
+  homepageButton_->setStyleClass("red-button");
+  homepageButton_->setText("Back to Homepage");
+  homepageButton_->clicked().connect([this] {
+    backToHomepage();
+  });
 
   // User statistics containers within layout
   pageLayout_->addWidget(userOneStatistics->getGameStatisticsContainer(), 3, 0);
@@ -48,7 +60,6 @@ ChessBoardUI::ChessBoardUI(Wt::WStackedWidget* container, GameController *gameCo
   gameInfo_ = pageLayout_->addWidget(std::make_unique<Wt::WContainerWidget>(), 2, 1, 1, 2);
   gameInfo_->setStyleClass("sidebar-container");
   gameInfo_->setContentAlignment(Wt::AlignmentFlag::Center);
-
 
   // Draw button  - white player
   whiteDrawButton_ = pageLayout_->addWidget(std::make_unique<Wt::WPushButton>(), 3, 2);
@@ -86,18 +97,13 @@ ChessBoardUI::ChessBoardUI(Wt::WStackedWidget* container, GameController *gameCo
     handleWhitePlayerResignation();
   });
 
-  // Homepage button to navigate back to homepage and stop the match
-  homepageButton_ = pageLayout_->addWidget(std::make_unique<Wt::WPushButton>(), 0, 0);
-  homepageButton_->setStyleClass("red-button");
-  homepageButton_->setText("Back to Homepage");
-  homepageButton_->clicked().connect([this] {
-    backToHomepage();
-  });
-
   // Save game button
   saveGameButton_ = pageLayout_->addWidget(std::make_unique<Wt::WPushButton>(), 0, 1, 1, 2);
   saveGameButton_->setStyleClass("red-button");
   saveGameButton_->setText("Save Game");
+  saveGameButton_->clicked().connect([this] {
+    saveGame();
+  });
 
   // Timer to update counters
   timer_ = new Wt::WTimer();
@@ -165,11 +171,9 @@ void ChessBoardUI::makeMove(Wt::WPushButton* selectedPiece, Wt::WPushButton* des
     updateBoard();
     // check if the move was a pawn promotion
     if (gameController_->getPieceAtPosition(end)->getPieceType() == PieceType::PAWN && (end.row == 0 || end.row == 7)) {
-      // this is where the promotion UI will be added, 
-      // make it return a PieceType to pass into promotePawn
-      gameController_->promotePawn(end, PieceType::QUEEN);
+      // this is where the promotion UI will be added,
+      handlePawnPromotion(end); // determines which piece to update the pawn to
       updateBoard(); // updateBoard required twice as initial pawn movement needs to be shown'
-      // as well as the newly selected piece
     }
     updateForGameStatus();
   }
@@ -187,6 +191,8 @@ std::vector<Position> ChessBoardUI::updatePossibleMoves() {
 
   // Get the selected piece's position
   Position selectedPiecePosition(selectedPiece_->objectName()[1] - '0', selectedPiece_->objectName()[3] - '0');
+
+  gameController_->getPieceAtPosition(selectedPiecePosition)->updateValidMoves(gameController_->getMutableBoard());
 
   // Get the possible moves for the selected piece
   std::vector<Position> possibleMoves = gameController_->getPossibleMoves(selectedPiecePosition);
@@ -314,6 +320,7 @@ void ChessBoardUI::updateStylesForPositions(std::vector<Position>& positions, co
  * into smaller pieces
  */
 void ChessBoardUI::updateTable(){
+  gameTable_->clear();
   std::istringstream stream(gameController_->getGameHistoryString());
   std::string word;
   gameHistory_->setStyleClass("inner-container");
@@ -346,6 +353,30 @@ void ChessBoardUI::gameHistory(){
   updateTable();
 }
 
+void ChessBoardUI::saveGame(){
+  if (gameController_->getGameStatus() == GameStatus::ONGOING || gameController_->getGameStatus() == GameStatus::CHECK){ /** Check to ensure that the game is currently running*/
+    if (gameController_->saveGame()){ /** check that the game a saved succcessfully*/
+      timer_->stop();
+      // Create the dialog if it doesn't exist
+      promptSavedGameDialog_ = pageContainer_->addChild(std::make_unique<Wt::WDialog>("Game Saved Successfully"));
+      promptSavedGameDialog_->contents()->addWidget(std::make_unique<Wt::WText>("The game was saved successfully, saved games can be accessed from the homepage")); 
+    }
+    else{
+      promptSavedGameDialog_ = pageContainer_->addChild(std::make_unique<Wt::WDialog>("ERROR Game was Unable to be Saved"));
+      promptSavedGameDialog_->contents()->addWidget(std::make_unique<Wt::WText>("The current game was not saved successfully, please try again."));
+    }
+  }
+  promptSavedGameDialog_->footer()->addWidget(std::make_unique<Wt::WPushButton>("Resume Game"))->clicked().connect([this] {
+        promptSavedGameDialog_->accept();
+        timer_->start();
+      });
+  promptSavedGameDialog_->footer()->addWidget(std::make_unique<Wt::WPushButton>("Return to Homepage"))->clicked().connect([this] {
+        promptSavedGameDialog_->reject();
+        backToHomepage();
+  });
+  promptSavedGameDialog_->show();
+}
+
 /**
  * @brief Helper to update the game info panel based on the game status
  *
@@ -360,11 +391,11 @@ void ChessBoardUI::updateGameInfoPanel(std::string* currentColour, std::string* 
   //  If the game was won by a player, display winning information
   if (*gameStatusString == "Checkmate" || *gameStatusString == "Resign" || *gameStatusString == "Timeout") {
     Player* winner = gameController_->getWinner();
-    std::string *winnerColour = winner->getColour() == Colour::WHITE ? new std::string("White") : new std::string("Black");
+    std::string winnerColour = winner->getColour() == Colour::WHITE ? "White" : "Black";
     gameInfo_->clear();
     statusText = gameInfo_->addWidget(std::make_unique<Wt::WText>("Match Over: " + *gameStatusString));
     gameInfo_->addWidget(std::make_unique<Wt::WBreak>());
-    winnerText = gameInfo_->addWidget(std::make_unique<Wt::WText>("Winner: " + *winnerColour));
+    winnerText = gameInfo_->addWidget(std::make_unique<Wt::WText>("Winner: " + winnerColour));
     statusText->setStyleClass("title");
     winnerText->setStyleClass("title");
     handleWinDialog();
@@ -449,12 +480,14 @@ void ChessBoardUI::updateForGameStatus() {
  * Called every second by the timer to update the current player's time
  */
 void ChessBoardUI::decrementCurrentPlayerTime() {
+  Player* currentPlayer = gameController_->getCurrentPlayer();
+    if (!currentPlayer) {
+        // currentPlayer is null, should not proceed further
+        return;
+    }
+
   // Update the current player's time left
   gameController_->decrementPlayerTime(std::chrono::duration<double>(1));
-
-  // Get the current player
-  Player* currentPlayer = gameController_->getCurrentPlayer();
-
   // Update the user statistics
   Player* player1 = currentPlayer->getColour() == Colour::WHITE ? currentPlayer : gameController_->getOpponentPlayer();
   Player* player2 = currentPlayer->getColour() == Colour::BLACK ? currentPlayer : gameController_->getOpponentPlayer();
@@ -472,7 +505,13 @@ void ChessBoardUI::decrementCurrentPlayerTime() {
  * @brief Starts a new game of chess
  */
 void ChessBoardUI::startGame() {
-  // Start the timer
+  if(user1_->getUsername() == "" || user2_->getUsername() == "") {
+    saveGameButton_->hide();
+  }
+  else {
+    saveGameButton_->show();
+  }
+  // Start the timer 
   timer_->start();
 
   // Create players
@@ -483,6 +522,9 @@ void ChessBoardUI::startGame() {
   gameController_->startGame(std::move(player1), std::move(player2));
 
   // Update user statistics
+  userOneStatistics_->setEloDiff(gameController_->getEloChange(gameController_->getCurrentPlayer()->getUser().getElo(), gameController_->getOpponentPlayer()->getUser().getElo()));
+  userTwoStatistics_->setEloDiff(gameController_->getEloChange(gameController_->getOpponentPlayer()->getUser().getElo(), gameController_->getCurrentPlayer()->getUser().getElo()));
+
   userOneStatistics_->updateStatistics(gameController_->getCurrentPlayer());
   userTwoStatistics_->updateStatistics(gameController_->getOpponentPlayer());
 
@@ -492,11 +534,64 @@ void ChessBoardUI::startGame() {
   // Update the game info
   updateForGameStatus();
 
+  updateTable();
 
   // Enable the chess board buttons
-    for (auto& pair : chessBoard_) {
-      pair.second->enable();
-    }
+  for (auto& pair : chessBoard_) {
+    pair.second->enable();
+  }
+}
+
+/**
+ * @brief Starts a match by loading it from the givne game ID
+ * 
+ * @param id 
+ */
+void ChessBoardUI::startGameFromID(int id) {
+  if(user1_->getUsername() == "" || user2_->getUsername() == "")
+    saveGameButton_->hide();
+  else {
+    saveGameButton_->show();
+  }
+  gameController_->loadGame(id, user1_, user2_);
+
+  // Update user statistics
+  userOneStatistics_->setEloDiff(gameController_->getEloChange(gameController_->getCurrentPlayer()->getUser().getElo(), gameController_->getOpponentPlayer()->getUser().getElo()));
+  userTwoStatistics_->setEloDiff(gameController_->getEloChange(gameController_->getOpponentPlayer()->getUser().getElo(), gameController_->getCurrentPlayer()->getUser().getElo()));
+
+  userOneStatistics_->updateStatistics(gameController_->getCurrentPlayer());
+  userTwoStatistics_->updateStatistics(gameController_->getOpponentPlayer());
+
+  // Update the board
+  updateBoard();
+
+  // Update the game info
+  updateForGameStatus();
+  updateTable();
+
+  // Enable the chess board buttons
+  for (auto& pair : chessBoard_) {
+    pair.second->enable();
+  }
+
+  // Start the timer 
+  timer_->start();
+}
+
+/**
+ * @brief Starts a new chess game from a test board configuration.
+ * @param boardString Test board state, as a string.
+ * @param turn Colour of who's turn it is.
+*/
+void ChessBoardUI::startFromTest(std::string boardString, Colour turn) {
+  startGame();
+  gameController_->getGameState()->getMutableBoard().initializeBoardFromString(boardString);
+  updateBoard();
+  if(turn == Colour::BLACK) {
+    gameController_->switchTurns();
+  }
+  gameController_->updateGameStatus();
+  updateForGameStatus();
 }
 
 /**
@@ -506,11 +601,11 @@ void ChessBoardUI::handleWinDialog() {
   GameStatus gameStatus = gameController_->getGameStatus();
 
   if (gameStatus == GameStatus::CHECKMATE || gameStatus == GameStatus::RESIGN) {
-    std::string *winnerColour = gameController_->getWinner()->getColour() == Colour::WHITE ? new std::string("White") : new std::string("Black");
+    std::string winnerColour = gameController_->getWinner()->getColour() == Colour::WHITE ? "White" : "Black";
 
     // Create the dialog if it doesn't exist
     if (!winDialog_) {
-      winDialog_ = pageContainer_->addChild(std::make_unique<Wt::WDialog>(*winnerColour + " Has Won"));
+      winDialog_ = pageContainer_->addChild(std::make_unique<Wt::WDialog>(winnerColour + " Has Won"));
       winDialog_->contents()->addWidget(std::make_unique<Wt::WText>("Would You Like To Play Again?"));
       winDialog_->footer()->addWidget(std::make_unique<Wt::WPushButton>("Play Again"))
         ->clicked().connect([this] {
@@ -524,10 +619,61 @@ void ChessBoardUI::handleWinDialog() {
       });
     }
     // Update the dialog window title
-    winDialog_->setWindowTitle(*winnerColour + " Has Won");
+    winDialog_->setWindowTitle(winnerColour + " Has Won");
     winDialog_->show();
   }
 }
+
+/**
+ * @brief Reset squares to default style class unless their style class is "checked-square"
+ * 
+ */
+void ChessBoardUI::resetDefaultSquares() {
+  for (int i = 0; i < 8; i++){
+    for (int j = 0; j < 8; j++){
+      // Coordinate string and button for the square
+      std::string coordinate = "(" + std::to_string(i) + "," + std::to_string(j) + ")";
+      auto square = chessBoard_[coordinate];
+      if (square->styleClass() != "checked-square") {
+        updateButtonStyleClass(square, style_);
+      }
+    }
+  } 
+}
+
+
+/**
+ * @brief Handles prompt for pawn promotion options
+*/
+void ChessBoardUI::handlePawnPromotion(Position end) {
+  if (gameController_->getGameStatus() == GameStatus::ONGOING) {
+    // Create the dialog if it doesn't exist
+    promptPromotePawnDialog_ = pageContainer_->addChild(std::make_unique<Wt::WDialog>("Pawn Promotion"));
+    promptPromotePawnDialog_->contents()->addWidget(std::make_unique<Wt::WText>("Select The Piece You Would Like To Promote To"));
+    auto addPromotionButton = [this, end](const std::string& title, PieceType type, const std::string& iconPath) {
+      auto button = promptPromotePawnDialog_->footer()->addWidget(std::make_unique<Wt::WPushButton>(title));
+      button->setIcon(Wt::WLink(iconPath));  // Set the icon for the button
+      button->clicked().connect([this, end, type] {
+        promptPromotePawnDialog_->accept();
+        gameController_->promotePawn(end, type);
+        gameController_->updateGameStatus();
+        updateBoard();
+        updateForGameStatus();
+      });
+    };
+
+    Colour pieceColour = gameController_->getCurrentPlayer()->getColour();
+    std::string pieceColourString = pieceColour == Colour::WHITE ? "white" : "black";
+
+    addPromotionButton("Queen", PieceType::QUEEN, "resources/images/" + pieceColourString + "-" + "Queen" + ".png");
+    addPromotionButton("Rook", PieceType::ROOK, "resources/images/" + pieceColourString + "-" + "Rook" + ".png");
+    addPromotionButton("Bishop", PieceType::BISHOP, "resources/images/" + pieceColourString + "-" + "Bishop" + ".png");
+    addPromotionButton("Knight", PieceType::KNIGHT, "resources/images/" + pieceColourString + "-" + "Knight" + ".png");
+
+  }
+  promptPromotePawnDialog_->show();
+}
+
 
 /**
  * @brief Handles prompt draw dialog pop up for a draw request
@@ -535,7 +681,6 @@ void ChessBoardUI::handleWinDialog() {
 void ChessBoardUI::handlePromptDrawDialog() {
   if (gameController_->getGameStatus() == GameStatus::ONGOING) {
     // Create the dialog if it doesn't exist
-
     promptDrawDialog_ = pageContainer_->addChild(std::make_unique<Wt::WDialog>("Draw Offer"));
     promptDrawDialog_->contents()->addWidget(std::make_unique<Wt::WText>("Your opponent has offered a draw. Do you accept?"));
     promptDrawDialog_->footer()->addWidget(std::make_unique<Wt::WPushButton>("Accept"))
@@ -632,10 +777,9 @@ void ChessBoardUI::handleWhitePlayerResignation() {
 void ChessBoardUI::backToHomepage() {
   // Stop the timer and reset the game
   timer_->stop();
-  gameController_->resetGameState();
-
-  updateBoard();
 
   // Navigate to homepage
-  parentContainer_->setCurrentIndex(5);
+  parentContainer_->setCurrentIndex(5, true);
+  gameController_->resetGameState();
+  updateBoard();
 }

@@ -12,7 +12,7 @@
 #define PIECE_FACTORY_H
 
 #include <memory>
-#include "Utilities.h"
+#include "DataUtil.h"
 #include "Piece.h"
 
 class PieceFactory {

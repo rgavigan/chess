@@ -1,6 +1,7 @@
 /**
  * @file Homepage.cpp
  * @author Riley Emma Gavigan (rgavigan@uwo.ca)
+ * @author Satvir Singh Uppal (suppal46@uwo.ca)
  * @brief This is the UI class for the homepage after logging in.
  * @date 2023-10-14
  */
@@ -15,7 +16,7 @@
  * @param user2 user two
  * @param gameController game controller
  */
-Homepage::Homepage(Wt::WStackedWidget* container, UserStatistics* userOneStatistics, UserStatistics* userTwoStatistics, User* user1, User* user2, GameController* gameController, ChessBoardUI* chessBoardUI) {
+Homepage::Homepage(WStackedWidget* container, UserStatistics* userOneStatistics, UserStatistics* userTwoStatistics, User* user1, User* user2, GameController* gameController, ChessBoardUI* chessBoardUI) {
     parentContainer_ = container; // Copy parent container reference 
     user1_ = user1; // Copy user1 reference 
     user2_ = user2; // Copy user2 reference 
@@ -56,6 +57,20 @@ Homepage::Homepage(Wt::WStackedWidget* container, UserStatistics* userOneStatist
     manageUserTwo_->setText("Login Player 2");
     manageUserTwo_->setStyleClass("login-button");
     manageUserTwo_->clicked().connect(this, &Homepage::manageUserTwo);
+
+    // Enter test mode button
+    testModeButton_ = homepageLayout_->addWidget(std::make_unique<Wt::WPushButton>(), 4, 0, 1, 2);
+    testModeButton_->setText("Enter Test Mode");
+    testModeButton_->setStyleClass("text-button");
+    testModeButton_->clicked().connect([=] {
+        parentContainer_->setCurrentIndex(6, true);
+    });
+    
+    loadGameButton_ = homepageLayout_->addWidget(std::make_unique<Wt::WPushButton>(), 5, 0, 1, 2);
+    loadGameButton_->setStyleClass("red-button");
+    loadGameButton_->setText("Load Game");
+    loadGameButton_->clicked().connect([this] {loadGamePage();});
+    showLoadableGame();
 }
 
 /**
@@ -71,7 +86,7 @@ Homepage::~Homepage() {}
 void Homepage::navigateToPlay() {
     // Start the game in ChessBoardUI
     chessBoardUI_->startGame();
-    parentContainer_->setCurrentIndex(2);
+    parentContainer_->setCurrentIndex(2, true);
 }
 
 /**
@@ -80,7 +95,8 @@ void Homepage::navigateToPlay() {
  * @param login True if user is logging in, False if no login occurs (user logs out or back button is pressed)
 */
 void Homepage::manageLoginButtons(int player, bool login) {
-    if(player == 1) { // P1
+    // Player 1
+    if(player == 1) {
         if(login) { // Successful login
             manageUserOne_->setText("Logout Player 1");
             manageUserOne_->setStyleClass("logout-button");
@@ -89,8 +105,8 @@ void Homepage::manageLoginButtons(int player, bool login) {
             manageUserOne_->setStyleClass("login-button");
         }
     } 
-    
-    else { // P2
+    // Player 2
+    else {
         if(login) { // Successful login
             manageUserTwo_->setText("Logout Player 2");
             manageUserTwo_->setStyleClass("logout-button");
@@ -99,6 +115,7 @@ void Homepage::manageLoginButtons(int player, bool login) {
             manageUserTwo_->setStyleClass("login-button");
         }
     }
+    showLoadableGame();
 }
 
 /**
@@ -108,8 +125,10 @@ void Homepage::manageLoginButtons(int player, bool login) {
 void Homepage::manageUserOne() {
     // Login condition 
     if (user1_->getUsername() == "") {
-        parentContainer_->setCurrentIndex(0);
+        parentContainer_->setCurrentIndex(0, true);
         manageLoginButtons(1, true);
+        manageUserOne_->setText("Logout Player 1");
+        manageUserOne_->setStyleClass("logout-button");
     }
     // Logout condition 
     else {
@@ -118,6 +137,7 @@ void Homepage::manageUserOne() {
     }
     // Update user statistics component 
     userOneStatistics_->updateStatistics(nullptr);
+    showLoadableGame();
 }
 
 /**
@@ -127,8 +147,11 @@ void Homepage::manageUserOne() {
 void Homepage::manageUserTwo() {
     // Login condition 
     if (user2_->getUsername() == "") {
-        parentContainer_->setCurrentIndex(3);
+        parentContainer_->setCurrentIndex(3, true);
         manageLoginButtons(2, true);
+
+        manageUserTwo_->setText("Logout Player 2");
+        manageUserTwo_->setStyleClass("logout-button");
     }
     // Logout condition 
     else { 
@@ -137,4 +160,47 @@ void Homepage::manageUserTwo() {
     }
     // Update user statistics component 
     userTwoStatistics_->updateStatistics(nullptr);
+    showLoadableGame();
+}
+
+/**
+ * @brief Transition from test board to game board.
+ * @param boardString Test board state, as a string.
+ * @param turn Colour of who's turn it is.
+*/
+void Homepage::testToPlay(std::string boardString, Colour colour) {
+    chessBoardUI_->startFromTest(boardString, colour);
+}
+
+/**
+ * @brief Shows the load game button if there are games to load, hides it otherwise
+ * @author Riley Gavigan
+*/
+void Homepage::showLoadableGame(){
+    if(user1_->getUsername() != "" && user2_->getUsername() != "" && gameController_->getNumSaves(user1_, user2_) > 0) {
+        loadGameButton_->show();
+    }
+    else {
+        loadGameButton_->hide();
+    }
+}
+
+/**
+ * @brief Handle navigation to load game, stopping the match
+ */
+void Homepage::loadGamePage(){
+    // Navigate to the load page
+    parentContainer_->setCurrentIndex(7, true);
+
+    // Render the loadable games
+    loadGame_->renderLoadableGames();
+}
+
+/**
+ * @brief Sets the load game page reference
+ * 
+ * @param loadGame 
+ */
+void Homepage::setLoadpage(LoadGame* loadGame){
+    loadGame_ = loadGame;
 }

@@ -27,7 +27,6 @@
 #include "Bishop.h"
 #include "Queen.h"
 #include "King.h"
-#include "Utilities.h"
 #include "Piece.h"
 
 /**
@@ -56,16 +55,17 @@ Piece* ChessBoard::getPieceAtPosition(const Position& position) const {
  * @brief Moves the piece from the start position to the end position on the board if the move is valid.
  * @param start The start position of the piece on the board.
  * @param end The end position to move the piece to on the board.
+ * @param override Overrides move validation if true, for test mode.
  * @return true if move was made, false otherwise.
  */
-bool ChessBoard::movePiece(const Position& start, const Position& end) {
+bool ChessBoard::movePiece(const Position& start, const Position& end, bool override) {
     Piece* piece = board[start.row][start.col].get();
 
     // Check if there is a piece at the start position 
     if (!piece) return false;
     
     // Check if the move is valid 
-    if (piece->isValidMove(start, end)) {
+    if (override || piece->isValidMove(start, end)) {
         
         // Update the board and the piece's position and valid moves 
         board[end.row][end.col] = std::move(board[start.row][start.col]);
@@ -200,37 +200,40 @@ std::vector<Piece*> ChessBoard::getPiecesOfColour(Colour colour) const {
 
 /**
  * @brief Initializes the board with Piece objects in their correct initial positions.
+ * @param testMode If test mode is on, initialize the board with only kings. Defaults to false.
  */
-void ChessBoard::initializeBoard() {
+void ChessBoard::initializeBoard(bool testMode) {
     clearBoard(); // Clear the board of any existing pieces 
 
-    // Initialize pawns 
-    for (int i = 0; i < 8; ++i) {
-        board[1][i] = PieceFactory::createPiece(Colour::BLACK, Position{1, i}, PieceType::PAWN);
-        board[6][i] = PieceFactory::createPiece(Colour::WHITE, Position{6, i}, PieceType::PAWN);
+    if(!testMode) {
+        // Initialize pawns 
+        for (int i = 0; i < 8; ++i) {
+            board[1][i] = PieceFactory::createPiece(Colour::BLACK, Position{1, i}, PieceType::PAWN);
+            board[6][i] = PieceFactory::createPiece(Colour::WHITE, Position{6, i}, PieceType::PAWN);
+        }
+
+        // Initialize rooks 
+        board[0][0] = PieceFactory::createPiece(Colour::BLACK, Position{0, 0}, PieceType::ROOK);
+        board[0][7] = PieceFactory::createPiece(Colour::BLACK, Position{0, 7}, PieceType::ROOK);
+        board[7][0] = PieceFactory::createPiece(Colour::WHITE, Position{7, 0}, PieceType::ROOK);
+        board[7][7] = PieceFactory::createPiece(Colour::WHITE, Position{7, 7}, PieceType::ROOK);
+
+        // Initialize knights 
+        board[0][1] = PieceFactory::createPiece(Colour::BLACK, Position{0, 1}, PieceType::KNIGHT);
+        board[0][6] = PieceFactory::createPiece(Colour::BLACK, Position{0, 6}, PieceType::KNIGHT);
+        board[7][1] = PieceFactory::createPiece(Colour::WHITE, Position{7, 1}, PieceType::KNIGHT);
+        board[7][6] = PieceFactory::createPiece(Colour::WHITE, Position{7, 6}, PieceType::KNIGHT);
+
+        // Initialize bishops 
+        board[0][2] = PieceFactory::createPiece(Colour::BLACK, Position{0, 2}, PieceType::BISHOP);
+        board[0][5] = PieceFactory::createPiece(Colour::BLACK, Position{0, 5}, PieceType::BISHOP);
+        board[7][2] = PieceFactory::createPiece(Colour::WHITE, Position{7, 2}, PieceType::BISHOP);
+        board[7][5] = PieceFactory::createPiece(Colour::WHITE, Position{7, 5}, PieceType::BISHOP);
+
+        // Initialize queens 
+        board[0][3] = PieceFactory::createPiece(Colour::BLACK, Position{0, 3}, PieceType::QUEEN);
+        board[7][3] = PieceFactory::createPiece(Colour::WHITE, Position{7, 3}, PieceType::QUEEN);
     }
-
-    // Initialize rooks 
-    board[0][0] = PieceFactory::createPiece(Colour::BLACK, Position{0, 0}, PieceType::ROOK);
-    board[0][7] = PieceFactory::createPiece(Colour::BLACK, Position{0, 7}, PieceType::ROOK);
-    board[7][0] = PieceFactory::createPiece(Colour::WHITE, Position{7, 0}, PieceType::ROOK);
-    board[7][7] = PieceFactory::createPiece(Colour::WHITE, Position{7, 7}, PieceType::ROOK);
-
-    // Initialize knights 
-    board[0][1] = PieceFactory::createPiece(Colour::BLACK, Position{0, 1}, PieceType::KNIGHT);
-    board[0][6] = PieceFactory::createPiece(Colour::BLACK, Position{0, 6}, PieceType::KNIGHT);
-    board[7][1] = PieceFactory::createPiece(Colour::WHITE, Position{7, 1}, PieceType::KNIGHT);
-    board[7][6] = PieceFactory::createPiece(Colour::WHITE, Position{7, 6}, PieceType::KNIGHT);
-
-    // Initialize bishops 
-    board[0][2] = PieceFactory::createPiece(Colour::BLACK, Position{0, 2}, PieceType::BISHOP);
-    board[0][5] = PieceFactory::createPiece(Colour::BLACK, Position{0, 5}, PieceType::BISHOP);
-    board[7][2] = PieceFactory::createPiece(Colour::WHITE, Position{7, 2}, PieceType::BISHOP);
-    board[7][5] = PieceFactory::createPiece(Colour::WHITE, Position{7, 5}, PieceType::BISHOP);
-
-    // Initialize queens 
-    board[0][3] = PieceFactory::createPiece(Colour::BLACK, Position{0, 3}, PieceType::QUEEN);
-    board[7][3] = PieceFactory::createPiece(Colour::WHITE, Position{7, 3}, PieceType::QUEEN);
 
     // Initialize kings 
     board[0][4] = PieceFactory::createPiece(Colour::BLACK, Position{0, 4}, PieceType::KING);
@@ -344,16 +347,12 @@ bool ChessBoard::isPawnEligibleForEnPassant(const Position& position, Colour col
     if ((colour == Colour::WHITE && position.row != 4) || (colour == Colour::BLACK && position.row != 3)) return false;
     // Check if the pawn is on the correct column 
     if (position.col < 0 || position.col > 7) return false;
-    // check if the enemy to the left of the pawn is a pawn that has moved once but has moved two spaces 
-    if (isSpaceEnemy(position, oppositeColour(colour))) {
-        Piece* piece = getPieceAtPosition(position);
-        if (piece->getPieceType() != PieceType::PAWN) return false;
-        Pawn* pawn = dynamic_cast<Pawn*>(piece);
-        if (!pawn || !pawn->getEnPassant()) return false;
-        return true;
-    }
-    
-    return false;
+    // check if the enemy pawn has moved once but has moved two spaces 
+    Piece* piece = getPieceAtPosition(position);
+    if (!piece || piece->getPieceType() != PieceType::PAWN) return false;
+    Pawn* pawn = dynamic_cast<Pawn*>(piece);
+    if (!pawn || !pawn->getEnPassant()) return false;
+    return true;
 }
 
 /**

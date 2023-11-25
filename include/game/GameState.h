@@ -19,7 +19,8 @@
 #include <unordered_map>
 #include "ChessBoard.h"
 #include "Player.h"
-#include "Utilities.h"
+#include "DataUtil.h"
+#include "ConversionUtil.h"
 
 class GameState {
 public:
@@ -36,7 +37,7 @@ public:
     /**
      * @brief Resets the game state to its initial configuration.
      */
-    void resetGameState();
+    void resetGameState(bool testMode = false);
 
     /**
      * @brief Returns a mutable reference to the chessboard.
@@ -183,11 +184,6 @@ public:
      */
     void setGameHistoryString(const std::string& history);
 
-    /**
-     * @brief Converts a string representation of a move into a Move object.
-     * @return A Move object representing the given string.
-     */
-    Move parseMoveString(const std::string& moveString) const;
     
 private:
     std::unique_ptr<ChessBoard> board;                                   /** The current game board that manages all the pieces and their movements. */

@@ -14,7 +14,7 @@
 
 #include <vector>
 #include <memory>
-#include "Utilities.h"
+#include "DataUtil.h"
 
 class Piece;
 
@@ -27,13 +27,13 @@ public:
     ~ChessBoard(); 
 
     /** Initializes all the pieces on the board at the start of a match. */
-    void initializeBoard();
+    void initializeBoard(bool testMode = false);
 
     /** Get the piece at a given position. */
     Piece* getPieceAtPosition(const Position& position) const;
     
     /** Move a piece from start to end position. */
-    bool movePiece(const Position& start, const Position& end);
+    bool movePiece(const Position& start, const Position& end, bool override = false);
 
     /** Checks if a move from start to end position is valid. */
     bool isValidMove(const Position& start, const Position& end) const;    

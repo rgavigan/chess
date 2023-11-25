@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <string>
 #include <sqlite3.h>
+#include "SQLUtil.h"
 
 class User;
 
@@ -47,10 +48,10 @@ public:
     std::size_t hashPassword(const std::string& password);
 
     /** Get a user's statistics. */
-    bool getUserStats(const std::string& username, int& wins, int& losses, int& draws) const;
+    bool getUserStats(const std::string& username, int& wins, int& losses, int& draws, double& elo) const;
 
     /** Update a user's statistics. */
-    bool updateUserStats(const std::string& username, int wins, int losses, int draws);
+    bool updateUserStats(const std::string& username, int wins, int losses, int draws, double elo);
 
     /** Check for duplicate usernames. */
     bool checkForDuplicates(const std::string& username) const;

@@ -12,6 +12,7 @@
 #define PAWN_H
 
 #include "Piece.h"
+#include "ConversionUtil.h"
 
 class Pawn : public Piece {
 public:

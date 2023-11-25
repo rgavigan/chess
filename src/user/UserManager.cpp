@@ -17,6 +17,7 @@
 #include <functional>
 #include <string>
 #include <stdexcept>
+#include <regex>
 #include "UserManager.h"
 
 /**
@@ -46,6 +47,8 @@ UserManager::UserManager(const std::string& dbPath) {
         sqlite3_close(db);
         throw std::runtime_error(errorMsg);
     }
+
+    SQLUtil::addColumnIfNotExists(db, "USERS", "ELO", "REAL DEFAULT 1000.0");
 }
 
 /**
@@ -65,6 +68,18 @@ bool UserManager::createUser(const std::string& username, const std::string& pas
     // Check for duplicates 
     if (checkForDuplicates(username)) {
         std::cerr << "Username already exists!" << std::endl;
+        return false;
+    }
+
+    // Ensure username only contains a-z, A-Z, 0-9, -, and _
+    if (!std::regex_match(username, std::regex("^[a-zA-Z0-9-_]+$"))) {
+        std::cerr << "Username must only contain a-z, A-Z, 0-9, -, and _" << std::endl;
+        return false;
+    }
+
+    // Ensure password only contains a-z, A-Z, 0-9, -, _, *, and !
+    if (!std::regex_match(password, std::regex("^[a-zA-Z0-9-_*!]+$"))) {
+        std::cerr << "Password must only contain a-z, A-Z, 0-9, -, _, *, and !" << std::endl;
         return false;
     }
 
@@ -137,11 +152,12 @@ std::size_t UserManager::hashPassword(const std::string& password) {
  * @param wins A reference to the number of wins of the User.
  * @param losses A reference to the number of losses of the User.
  * @param draws A reference to the number of draws of the User.
+ * @param elo A reference to the User's Elo rating.
  * @return true if the User was found, false otherwise.
  */
-bool UserManager::getUserStats(const std::string& username, int& wins, int& losses, int& draws) const {
+bool UserManager::getUserStats(const std::string& username, int& wins, int& losses, int& draws, double& elo) const {
 
-    std::string sql = "SELECT WINS, LOSSES, DRAWS FROM USERS WHERE USERNAME = ?;";
+    std::string sql = "SELECT WINS, LOSSES, DRAWS, ELO FROM USERS WHERE USERNAME = ?;";
     sqlite3_stmt* stmt;
 
     if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, NULL) != SQLITE_OK) {
@@ -156,6 +172,7 @@ bool UserManager::getUserStats(const std::string& username, int& wins, int& loss
         wins = sqlite3_column_int(stmt, 0);
         losses = sqlite3_column_int(stmt, 1);
         draws = sqlite3_column_int(stmt, 2);
+        elo = sqlite3_column_double(stmt, 3);
     }
 
     sqlite3_finalize(stmt);
@@ -168,15 +185,16 @@ bool UserManager::getUserStats(const std::string& username, int& wins, int& loss
  * @param wins The number of wins of the User.
  * @param losses The number of losses of the User.
  * @param draws The number of draws of the User.
+ * @param elo The User's Elo rating.
  * @return true if the User was found, false otherwise.
  */
-bool UserManager::updateUserStats(const std::string& username, int wins, int losses, int draws) {
+bool UserManager::updateUserStats(const std::string& username, int wins, int losses, int draws, double elo) {
     if (!checkForDuplicates(username)) {
         std::cerr << "Username does not exist!" << std::endl;
         return false;
     }
 
-    std::string sql = "UPDATE USERS SET WINS = ?, LOSSES = ?, DRAWS = ? WHERE USERNAME = ?;";
+    std::string sql = "UPDATE USERS SET WINS = ?, LOSSES = ?, DRAWS = ?, ELO = ? WHERE USERNAME = ?;";
     sqlite3_stmt* stmt;
 
     if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, NULL) != SQLITE_OK) {
@@ -187,7 +205,8 @@ bool UserManager::updateUserStats(const std::string& username, int wins, int los
     sqlite3_bind_int(stmt, 1, wins);
     sqlite3_bind_int(stmt, 2, losses);
     sqlite3_bind_int(stmt, 3, draws);
-    sqlite3_bind_text(stmt, 4, username.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_double(stmt, 4, elo);
+    sqlite3_bind_text(stmt, 5, username.c_str(), -1, SQLITE_STATIC);
 
     int step = sqlite3_step(stmt);
     sqlite3_finalize(stmt);

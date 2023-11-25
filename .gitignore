@@ -5,3 +5,5 @@ main_app
 test_main
 **/.DS_Store
 stockfish/*
+**/.nfs*
+vgcore*

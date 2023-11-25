@@ -8,18 +8,19 @@
 #define CREATE_ACCOUNT_H
 
 #include <Wt/WContainerWidget.h>
-#include <Wt/WStackedWidget.h>
 #include <Wt/WLineEdit.h>
 #include <Wt/WPushButton.h>
 #include <Wt/WGridLayout.h>
 #include <Wt/WObject.h>
 #include <Wt/WText.h>
+#include <regex>
 
 #include "UserManager.h"
+#include "WStackedWidget.h"
 
 class CreateAccount : public Wt::WObject {
 public:
-    CreateAccount(Wt::WStackedWidget* container);
+    CreateAccount(WStackedWidget* container);
     ~CreateAccount();
 
 private:
@@ -33,7 +34,7 @@ private:
 
     Wt::WContainerWidget *createAccountContainer_;
     Wt::WGridLayout *createAccountLayout_;
-    Wt::WStackedWidget *parentContainer_; /** Parent container stored as a class variable for navigation */
+    WStackedWidget *parentContainer_; /** Parent container stored as a class variable for navigation */
 
     UserManager *userManager_; /** User manager instance to create new account */
 

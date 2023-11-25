@@ -98,8 +98,8 @@ void UserStatistics::updateStatistics(Player *player) {
         gameUserInfo_->setText("Guest Player");
     }
     else {
-        userInfo_->setText(user_->getUsername() + "  |  " + std::to_string(user_->getWins()) + "W-" + std::to_string(user_->getLosses()) + "L-" + std::to_string(user_->getDraws()) + "D");
-        gameUserInfo_->setText(user_->getUsername() + "  |  " + std::to_string(user_->getWins()) + "W-" + std::to_string(user_->getLosses()) + "L-" + std::to_string(user_->getDraws()) + "D");
+        userInfo_->setText(user_->getUsername() + "  |  " + std::to_string(user_->getWins()) + "W-" + std::to_string(user_->getLosses()) + "L-" + std::to_string(user_->getDraws()) + "D (" + std::to_string(user_->getRoundedElo()) + " Elo)");
+        gameUserInfo_->setText(user_->getUsername() + "  |  " + std::to_string(user_->getWins()) + "W-" + std::to_string(user_->getLosses()) + "L-" + std::to_string(user_->getDraws()) + "D (" + std::to_string(user_->getRoundedElo()) + " Elo)" + eloDiff_);
     }
     if (player == nullptr) {
         return;
@@ -121,4 +121,14 @@ void UserStatistics::updateStatistics(Player *player) {
 void UserStatistics::updateTimer() {
     std::string timerString = timerComboBox_->currentText().toUTF8();
     user_->setTimer(std::chrono::minutes(std::stoi(timerString)));
+}
+
+/**
+ * @brief Sets the change in Elo rating text.
+ * @param eloChanges Pair of Elo gained and lost.
+*/
+void UserStatistics::setEloDiff(std::pair<double, double> eloChanges) {
+    std::stringstream output("");
+    output << " | Win: +" << std::round(eloChanges.first * 10.0) / 10.0 << " / Loss: " << std::round(eloChanges.second * 10.0) / 10.0;
+    eloDiff_ = output.str();
 }

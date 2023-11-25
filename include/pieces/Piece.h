@@ -15,7 +15,7 @@
 
 #include <string>
 #include <vector>  // For storing valid moves.
-#include "Utilities.h"
+#include "DataUtil.h"
 #include "ChessBoard.h"
 
 class Piece {

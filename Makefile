@@ -1,6 +1,6 @@
 # Compiler and compiler flags
 CXX = g++
-TEST_CXXFLAGS = -g
+CXXFLAGS = -g  # Add -g to the general compiler flags
 
 INCLUDE_DIRS = $(addprefix -I , $(wildcard include/*)) -I include/ui/pages -I include/ui/components
 BUILD = build
@@ -20,22 +20,22 @@ all: $(BUILD) main_app
 
 # Create build directory if it does not exist
 $(BUILD):
-	mkdir -p $(BUILD)/src/pieces $(BUILD)/src/game $(BUILD)/src/user $(BUILD)/src/ui $(BUILD)/src/ui/components $(BUILD)/src/ui/pages $(BUILD)/test/src/pieces $(BUILD)/test/src/game $(BUILD)/test/src/user $(BUILD)/test/src/ui $(BUILD)/test/mocks/src/user
+	mkdir -p $(BUILD)/src/pieces $(BUILD)/src/game $(BUILD)/src/user $(BUILD)/src/ui $(BUILD)/src/ui/components $(BUILD)/src/ui/pages $(BUILD)/src/util $(BUILD)/test/src/pieces $(BUILD)/test/src/game $(BUILD)/test/src/user $(BUILD)/test/src/ui $(BUILD)/test/mocks/src/user
 
 main_app: $(OBJECTS)
-	$(CXX) $^ -o $@ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 # Testing application
 runtest: $(BUILD) test_main
 	./test_main > $(BUILD)/test_console_output.txt 2>&1
 
 test_main: $(TEST_OBJECTS)
-	$(CXX) $(TEST_CXXFLAGS) $^ -o $@ $(LDFLAGS) $(GTEST_FLAGS) -lsqlite3 > $(BUILD)/compiling_console_output.txt 2>&1
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(GTEST_FLAGS) -lsqlite3 > $(BUILD)/compiling_console_output.txt 2>&1
 	valgrind --leak-check=full --show-leak-kinds=all ./test_main > $(BUILD)/valgrind_output.txt 2>&1
 
 # Object creation in build directory
 $(BUILD)/%.o: %.cpp
-	$(CXX) $(INCLUDE_DIRS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) -c $< -o $@
 
 # Create doxygen documentation output
 doc:
