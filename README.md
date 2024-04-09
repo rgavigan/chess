@@ -1,6 +1,5 @@
 # Chess Web Application
 ## Running the Application
-It's recommended that you run the application on Gaul and connect through an SSH tunnel for the port you select.
 ```sh
 # Build the application
 make clean && make
@@ -11,9 +10,9 @@ make clean && make
 # Alternatively, just use the shell script provided to do everything in one line
 ./run.sh <port>
 ```
-Use any web browser to connect to http://127.0.0.1:port-number to play the PiChess application.
+Use any web browser to connect to http://127.0.0.1:port-number to play the Chess application.
 
-## Testing the Application
+## Testing
 ```sh
 # Build the application for testing
 make clean && make runtest
